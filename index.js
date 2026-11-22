@@ -6,7 +6,7 @@ const {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
   ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder
 } = require('discord.js');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 const { loginToSparx, runHomeworkInDM } = require('./solver');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.DirectMessages] });

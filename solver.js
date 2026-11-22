@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 const OpenAI = require('openai');
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const emojis = require("./emojis.json");
