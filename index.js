@@ -1,4 +1,3 @@
-const http = require("http"); http.createServer((req, res) => res.end("Demon AI is online!")).listen(process.env.PORT || 3000);
 require('dotenv').config();
 const {
   Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder,
