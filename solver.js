@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer');
 const OpenAI = require('openai');
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const emojis = require("./emojis.json");
@@ -134,9 +134,7 @@ async function runHomeworkInDM(user, session, targetHw) {
   const bookworkLog = {};
 
   try {
-    browser = await puppeteer.connect({
-      browserWSEndpoint: 'wss://production-sfo.browserless.io?token=' + process.env.BROWSERLESS_TOKEN
-    });
+    browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] });
     page = await browser.newPage();
 
     await loginToSparx(page, session.school, session.username, session.password, session.isMicrosoft);

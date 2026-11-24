@@ -4,7 +4,7 @@ const {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
   ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder
 } = require('discord.js');
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer');
 const { loginToSparx, runHomeworkInDM } = require('./solver');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.DirectMessages] });
@@ -190,7 +190,7 @@ client.on('interactionCreate', async interaction => {
     let browser;
 try {
 await interaction.editReply('Logging into Sparx and loading your homework list...');
-browser = await puppeteer.connect({ browserWSEndpoint: 'wss://production-sfo.browserless.io?token=' + process.env.BROWSERLESS_TOKEN });
+browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] });
 const page = await browser.newPage();
 await loginToSparx(page, school, username, password, isMicrosoft);
 const scraped = await page.evaluate(() => {
