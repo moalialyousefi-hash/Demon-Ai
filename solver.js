@@ -1,4 +1,14 @@
 const puppeteer = require('puppeteer');
+let sharedBrowser = null;
+async function getFastBrowser() {
+  if (sharedBrowser && sharedBrowser.connected) return sharedBrowser;
+  sharedBrowser = await puppeteer.launch({
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--no-zygote"]
+  });
+  return sharedBrowser;
+}
+
 const OpenAI = require('openai');
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const emojis = require("./emojis.json");
@@ -44,6 +54,11 @@ async function dismissCookies(page) {
 
 async function loginToSparx(page, school, username, password, isMicrosoft) {
   await page.setViewport({ width: 1280, height: 800 });
+  await page.setRequestInterception(true);
+  page.on("request", req => {
+    if (["image", "stylesheet", "font", "media"].includes(req.resourceType())) req.abort();
+    else req.continue();
+  });
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36');
 
   await page.goto('https://sparxmaths.uk', { waitUntil: 'domcontentloaded', timeout: 30000 });
@@ -248,4 +263,4 @@ debugShot ? [new AttachmentBuilder(debugShot, { name: 'debug.png' })] : []
 if (browser) await browser.close();
 }
 }
-module.exports = { loginToSparx, runHomeworkInDM };
+module.exports = { loginToSparx, runHomeworkInDM, getFastBrowser };

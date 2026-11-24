@@ -7,7 +7,7 @@ const {
   ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder
 } = require('discord.js');
 const puppeteer = require('puppeteer');
-const { loginToSparx, runHomeworkInDM } = require('./solver');
+const { loginToSparx, runHomeworkInDM, getFastBrowser } = require('./solver');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.DirectMessages] });
 const savedAccounts = new Map();
@@ -192,7 +192,7 @@ client.on('interactionCreate', async interaction => {
     let browser;
 try {
 await interaction.editReply('Logging into Sparx and loading your homework list...');
-browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] });
+browser = await getFastBrowser();
 const page = await browser.newPage();
 await loginToSparx(page, school, username, password, isMicrosoft);
 const scraped = await page.evaluate(() => {
@@ -222,7 +222,7 @@ await interaction.editReply(buildSparxDashboard(session));
 } catch (err) {
 await interaction.editReply('Stopped early: ' + err.message);
 } finally {
-// Keep browser warm for instant Start Selected
+if (page) await page.close().catch(() => {});
 }
 }
 });
