@@ -209,7 +209,7 @@ return { name, homeworks };
 const firstIncomplete = scraped.homeworks.find(h => !h.completed);
 const session = {
 school, username, password, isMicrosoft,
-studentName: scraped.name,
+browser, page, studentName: scraped.name,
 homeworks: scraped.homeworks,
 selectedHwId: firstIncomplete ? firstIncomplete.id : null,
 showCompleted: !firstIncomplete,
@@ -220,7 +220,7 @@ await interaction.editReply(buildSparxDashboard(session));
 } catch (err) {
 await interaction.editReply('Stopped early: ' + err.message);
 } finally {
-if (browser) await browser.close();
+// Keep browser warm for instant Start Selected
 }
 }
 });

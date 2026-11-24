@@ -46,8 +46,8 @@ async function loginToSparx(page, school, username, password, isMicrosoft) {
   await page.setViewport({ width: 1280, height: 800 });
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36');
 
-  await page.goto('https://sparxmaths.uk', { waitUntil: 'networkidle2', timeout: 30000 });
-  await new Promise(r => setTimeout(r, 1500));
+  await page.goto('https://sparxmaths.uk', { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await new Promise(r => setTimeout(r, 500));
   await dismissCookies(page);
 
   await page.evaluate(() => {
@@ -55,12 +55,12 @@ async function loginToSparx(page, school, username, password, isMicrosoft) {
     const loginBtn = btns.find(b => b.innerText && b.innerText.trim().toLowerCase() === 'log in');
     if (loginBtn) loginBtn.click();
   });
-  await new Promise(r => setTimeout(r, 1500));
+  await new Promise(r => setTimeout(r, 500));
 
   await page.waitForSelector('input', { timeout: 15000 });
   await page.click('input');
-  await page.type('input', school, { delay: 50 });
-  await new Promise(r => setTimeout(r, 1500));
+  await page.type('input', school, { delay: 10 });
+  await new Promise(r => setTimeout(r, 500));
 
   await page.evaluate((schoolName) => {
     const cleanQuery = schoolName.toLowerCase().replace(/\s+/g, '');
@@ -72,17 +72,17 @@ async function loginToSparx(page, school, username, password, isMicrosoft) {
     });
     if (match) match.click();
   }, school);
-  await new Promise(r => setTimeout(r, 800));
+  await new Promise(r => setTimeout(r, 300));
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await new Promise(r => setTimeout(r, 800));
+  await new Promise(r => setTimeout(r, 300));
 
   await page.evaluate(() => {
     const btns = Array.from(document.querySelectorAll('button'));
     const contBtn = btns.find(b => b.innerText && b.innerText.trim().toLowerCase() === 'continue');
     if (contBtn) contBtn.click();
   });
-  await new Promise(r => setTimeout(r, 2000));
+  await new Promise(r => setTimeout(r, 700));
   await dismissCookies(page);
 
   if (isMicrosoft) {
@@ -94,14 +94,14 @@ async function loginToSparx(page, school, username, password, isMicrosoft) {
     await page.waitForSelector('input[type="email"], input[name="loginfmt"]', { timeout: 15000 });
     await page.type('input[type="email"], input[name="loginfmt"]', username);
     await page.click('input[type="submit"], #idSIButton9');
-    await new Promise(r => setTimeout(r, 2500));
+    await new Promise(r => setTimeout(r, 900));
     await page.waitForSelector('input[type="password"], input[name="passwd"]', { timeout: 15000 });
     await page.type('input[type="password"], input[name="passwd"]', password);
     await page.click('input[type="submit"], #idSIButton9');
-    await new Promise(r => setTimeout(r, 2500));
+    await new Promise(r => setTimeout(r, 900));
     const stayBtn = await page.$('#idSIButton9');
     if (stayBtn) await stayBtn.click();
-    await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 }).catch(() => {});
+    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
   } else {
     await page.waitForSelector('input[type="password"]', { timeout: 15000 });
     await dismissCookies(page);
@@ -109,10 +109,10 @@ async function loginToSparx(page, school, username, password, isMicrosoft) {
     await inputs.at(0).type(username);
     await inputs.at(1).type(password);
     await page.keyboard.press('Enter');
-    await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }).catch(() => {});
+    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
   }
 
-  await new Promise(r => setTimeout(r, 2000));
+  await new Promise(r => setTimeout(r, 700));
   await dismissCookies(page);
 }
 
@@ -149,7 +149,7 @@ async function runHomeworkInDM(user, session, targetHw) {
       const target = rows.find(el => el.innerText && el.innerText.includes(hwTitle) && el.innerText.length < 150);
       if (target) target.click();
     }, targetHw.title);
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise(r => setTimeout(r, 700));
 
     // Click first task item inside it
     await page.evaluate(() => {
@@ -159,7 +159,7 @@ async function runHomeworkInDM(user, session, targetHw) {
       );
       if (taskItem) taskItem.click();
     });
-    await new Promise(r => setTimeout(r, 2500));
+    await new Promise(r => setTimeout(r, 900));
 
     for (let i = 0; i < 6; i++) {
       tasks.done = i;
@@ -180,7 +180,7 @@ async function runHomeworkInDM(user, session, targetHw) {
             const btn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes(ans));
             if (btn) btn.click();
           }, bookworkLog[codeNeeded]);
-          await new Promise(r => setTimeout(r, 2000));
+          await new Promise(r => setTimeout(r, 700));
           continue;
         }
       }
@@ -219,14 +219,14 @@ const match = Array.from(document.querySelectorAll('button, [role="button"]')).f
 if (match) match.click();
 }, answer);
 }
-await new Promise(r => setTimeout(r, 2000));
+await new Promise(r => setTimeout(r, 700));
 await page.evaluate(() => {
 const nextBtn = Array.from(document.querySelectorAll('button')).find(b =>
 b.innerText && (b.innerText.includes('Next') || b.innerText.includes('Continue') || b.innerText.includes('Submit'))
 );
 if (nextBtn) nextBtn.click();
 });
-await new Promise(r => setTimeout(r, 2000));
+await new Promise(r => setTimeout(r, 700));
 }
 tasks.done = 6;
 await dmMsg.edit(
