@@ -63,7 +63,7 @@ async function loginToSparx(page, school, username, password, isMicrosoft) {
 
   await page.goto('https://sparxmaths.uk', { waitUntil: 'domcontentloaded', timeout: 30000 });
   await new Promise(r => setTimeout(r, 500));
-  await dismissCookies(page);
+  await dismissCookies(page).catch(() => {});
 
   await page.evaluate(() => {
     const btns = Array.from(document.querySelectorAll('button, a'));
@@ -98,7 +98,7 @@ async function loginToSparx(page, school, username, password, isMicrosoft) {
     if (contBtn) contBtn.click();
   });
   await new Promise(r => setTimeout(r, 700));
-  await dismissCookies(page);
+  await dismissCookies(page).catch(() => {});
 
   if (isMicrosoft) {
     await page.evaluate(() => {
@@ -119,7 +119,7 @@ async function loginToSparx(page, school, username, password, isMicrosoft) {
     await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
   } else {
     await page.waitForSelector('input[type="password"]', { timeout: 15000 });
-    await dismissCookies(page);
+    await dismissCookies(page).catch(() => {});
     const inputs = await page.$$('input:not([type="hidden"])');
     await inputs.at(0).type(username);
     await inputs.at(1).type(password);
@@ -128,7 +128,9 @@ async function loginToSparx(page, school, username, password, isMicrosoft) {
   }
 
   await new Promise(r => setTimeout(r, 700));
-  await dismissCookies(page);
+  await page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 6000 }).catch(() => {});
+  await new Promise(r => setTimeout(r, 1500));
+  await dismissCookies(page).catch(() => {});
 }
 
 async function runHomeworkInDM(user, session, targetHw) {

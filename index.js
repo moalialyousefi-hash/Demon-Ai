@@ -195,7 +195,9 @@ await interaction.editReply('Logging into Sparx and loading your homework list..
 browser = await getFastBrowser();
 const page = await browser.newPage();
 await loginToSparx(page, school, username, password, isMicrosoft);
-const scraped = await page.evaluate(() => {
+const scraped = await page.waitForSelector("body", { timeout: 10000 }).catch(() => {});
+      await new Promise(r => setTimeout(r, 1500));
+      await page.evaluate(() => {
 const h = document.querySelector('h1, h2');
 const name = (h && h.innerText.includes('Hey ')) ? h.innerText.replace('Hey ', '').replace(',', '').trim() : 'Student';
 const lines = document.body.innerText.split('\n').map(l => l.trim()).filter(Boolean);
