@@ -226,6 +226,7 @@ client.on('interactionCreate', async interaction => {
       const session = {
         school, username, password, isMicrosoft,
         page,
+        page,
         studentName: scraped.name,
         homeworks: scraped.homeworks,
         selectedHwId: firstIncomplete ? firstIncomplete.id : null,
