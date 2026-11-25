@@ -62,15 +62,7 @@ async function loginToSparx(page, school, username, password, isMicrosoft) {
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36');
 
   await page.goto('https://sparxmaths.uk', { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await new Promise(r => setTimeout(r, 500));
   await dismissCookies(page).catch(() => {});
-
-  await page.evaluate(() => {
-    const btns = Array.from(document.querySelectorAll('button, a'));
-    const loginBtn = btns.find(b => b.innerText && b.innerText.trim().toLowerCase() === 'log in');
-    if (loginBtn) loginBtn.click();
-  });
-  await new Promise(r => setTimeout(r, 500));
 
   await page.waitForSelector('input', { timeout: 15000 });
   await page.click('input');
@@ -127,9 +119,7 @@ async function loginToSparx(page, school, username, password, isMicrosoft) {
     await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
   }
 
-  await new Promise(r => setTimeout(r, 700));
-  await page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 6000 }).catch(() => {});
-  await new Promise(r => setTimeout(r, 1500));
+  await page.waitForFunction(() => document.body && document.body.innerText.includes("Homework"), { timeout: 10000 }).catch(() => {});
   await dismissCookies(page).catch(() => {});
 }
 
@@ -151,10 +141,14 @@ async function runHomeworkInDM(user, session, targetHw) {
   const bookworkLog = {};
 
   try {
-    browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] });
-    page = await browser.newPage();
-
-    await loginToSparx(page, session.school, session.username, session.password, session.isMicrosoft);
+    if (session.page && !session.page.isClosed()) {
+      page = session.page;
+      session.page = null;
+    } else {
+      browser = await getFastBrowser();
+      page = await browser.newPage();
+      await loginToSparx(page, session.school, session.username, session.password, session.isMicrosoft);
+    }
 
     await dmMsg.edit(
       buildProgressPayload(session, targetHw.title, 'Opening ' + targetHw.title + '...', tasks)

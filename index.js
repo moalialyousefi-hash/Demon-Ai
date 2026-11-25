@@ -221,8 +221,11 @@ client.on('interactionCreate', async interaction => {
       if (!scraped) throw new Error("Page redirected too many times. Please try logging in again.");
 
       const firstIncomplete = scraped.homeworks.find(h => !h.completed);
+      const oldSession = userSessions.get(interaction.user.id);
+      if (oldSession && oldSession.page) await oldSession.page.close().catch(() => {});
       const session = {
         school, username, password, isMicrosoft,
+        page,
         studentName: scraped.name,
         homeworks: scraped.homeworks,
         selectedHwId: firstIncomplete ? firstIncomplete.id : null,
@@ -232,9 +235,8 @@ client.on('interactionCreate', async interaction => {
       userSessions.set(interaction.user.id, session);
       await interaction.editReply(buildSparxDashboard(session));
     } catch (err) {
-      await interaction.editReply("Stopped early: " + err.message);
-    } finally {
       if (page) await page.close().catch(() => {});
+      await interaction.editReply("Stopped early: " + err.message);
     }
   }
 });
