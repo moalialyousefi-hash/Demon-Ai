@@ -62,8 +62,11 @@ async function loginToSparx(page, school, username, password, isMicrosoft) {
   });
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36');
 
-  await page.goto('https://sparxmaths.uk', { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.goto("https://sparxmaths.uk", { waitUntil: "domcontentloaded", timeout: 30000 });
+  await new Promise(r => setTimeout(r, 800));
   await dismissCookies(page).catch(() => {});
+  const alreadyIn = await page.evaluate(() => document.body && document.body.innerText.includes("Homework"));
+  if (alreadyIn) return;
 
   await page.waitForSelector('input', { timeout: 15000 });
   await dismissCookies(page).catch(() => {});
