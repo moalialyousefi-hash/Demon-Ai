@@ -48,6 +48,7 @@ async function dismissCookies(page) {
   await page.evaluate(() => {
     const btns = Array.from(document.querySelectorAll('button'));
     const accept = btns.find(b => b.innerText && b.innerText.trim().toUpperCase().includes('ACCEPT'));
+      if (accept) { accept.click(); return; }
     if (accept) accept.click();
   });
 }
@@ -56,7 +57,7 @@ async function loginToSparx(page, school, username, password, isMicrosoft) {
   await page.setViewport({ width: 1280, height: 800 });
   await page.setRequestInterception(true);
   page.on("request", req => {
-    if (["image", "stylesheet", "font", "media"].includes(req.resourceType())) req.abort();
+    if (["font", "media"].includes(req.resourceType())) req.abort();
     else req.continue();
   });
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36');
@@ -65,7 +66,8 @@ async function loginToSparx(page, school, username, password, isMicrosoft) {
   await dismissCookies(page).catch(() => {});
 
   await page.waitForSelector('input', { timeout: 15000 });
-  await page.click('input');
+  await dismissCookies(page).catch(() => {});
+  await page.evaluate(() => { const inp = document.querySelector('input'); if (inp) inp.focus(); });
   await page.type('input', school, { delay: 10 });
   await new Promise(r => setTimeout(r, 500));
 
