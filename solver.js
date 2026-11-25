@@ -1,12 +1,9 @@
 const puppeteer = require('puppeteer');
-let sharedBrowser = null;
 async function getFastBrowser() {
-  if (sharedBrowser && sharedBrowser.connected) return sharedBrowser;
-  sharedBrowser = await puppeteer.launch({
+  return await puppeteer.launch({
     headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--no-zygote"]
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--no-zygote", "--single-process"]
   });
-  return sharedBrowser;
 }
 
 const OpenAI = require('openai');
@@ -261,7 +258,8 @@ debugShot ? [new AttachmentBuilder(debugShot, { name: 'debug.png' })] : []
 )
 );
 } finally {
-if (browser) await browser.close();
+if (page) await page.close().catch(() => {});
+    if (browser) await browser.close().catch(() => {});
 }
 }
 module.exports = { loginToSparx, runHomeworkInDM, getFastBrowser };

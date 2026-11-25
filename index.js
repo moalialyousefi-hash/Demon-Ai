@@ -233,8 +233,9 @@ client.on('interactionCreate', async interaction => {
       };
       userSessions.set(interaction.user.id, session);
       await interaction.editReply(buildSparxDashboard(session));
+      if (browser) await browser.close().catch(() => {});
     } catch (err) {
-      if (page) await page.close().catch(() => {});
+      if (browser) await browser.close().catch(() => {});
       await interaction.editReply("Stopped early: " + err.message);
     }
   }
