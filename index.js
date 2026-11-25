@@ -197,6 +197,8 @@ const page = await browser.newPage();
 await loginToSparx(page, school, username, password, isMicrosoft);
 const scraped = await page.waitForSelector("body", { timeout: 10000 }).catch(() => {});
       await new Promise(r => setTimeout(r, 1500));
+      await page.waitForSelector("body", { timeout: 10000 }).catch(() => {});
+      await new Promise(r => setTimeout(r, 1500));
       await page.evaluate(() => {
 const h = document.querySelector('h1, h2');
 const name = (h && h.innerText.includes('Hey ')) ? h.innerText.replace('Hey ', '').replace(',', '').trim() : 'Student';
