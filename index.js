@@ -80,8 +80,8 @@ return await interaction.reply({ embeds: [embed], components: [row] });
 }
 if (interaction.isButton()) {
 console.log('[BTN] ' + interaction.customId + ' by ' + interaction.user.tag);
-if (interaction.customId === 'open_sparx_modal' || interaction.customId === 'open_ms_modal') {
-const isMs = interaction.customId === 'open_ms_modal';
+if (interaction.customId.includes('sparx') || interaction.customId.includes('ms')) {
+const isMs = interaction.customId.includes('ms');
 const saved = savedAccounts.get(interaction.user.id) || { school: '', username: '', password: '' };
 const modal = new ModalBuilder()
 .setCustomId(isMs ? 'ms_login_modal' : 'sparx_login_modal')
