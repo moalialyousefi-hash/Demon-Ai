@@ -189,49 +189,53 @@ client.on('interactionCreate', async interaction => {
 
     savedAccounts.set(interaction.user.id, { school, username, password });
 
-    let browser;
-try {
-await interaction.editReply('Logging into Sparx and loading your homework list...');
-browser = await getFastBrowser();
-const page = await browser.newPage();
-await loginToSparx(page, school, username, password, isMicrosoft);
-const scraped = await page.waitForSelector("body", { timeout: 10000 }).catch(() => {});
-      await new Promise(r => setTimeout(r, 1500));
-      await page.waitForSelector("body", { timeout: 10000 }).catch(() => {});
-      await new Promise(r => setTimeout(r, 1500));
-      await page.waitForSelector("body", { timeout: 10000 }).catch(() => {});
-      await new Promise(r => setTimeout(r, 1500));
-      await page.waitForSelector("body", { timeout: 10000 }).catch(() => {});
-      await new Promise(r => setTimeout(r, 1500));
-      await page.evaluate(() => {
-const h = document.querySelector('h1, h2');
-const name = (h && h.innerText.includes('Hey ')) ? h.innerText.replace('Hey ', '').replace(',', '').trim() : 'Student';
-const lines = document.body.innerText.split('\n').map(l => l.trim()).filter(Boolean);
-const homeworks = [];
-for (let i = 0; i < lines.length; i++) {
-if (lines[i].startsWith('Homework due ')) {
-const nearby = lines.slice(i, i + 4).join(' ');
-homeworks.push({ id: 'hw_' + homeworks.length, title: lines[i], completed: nearby.includes('Completed') });
-}
-}
-return { name, homeworks };
-});
-const firstIncomplete = scraped.homeworks.find(h => !h.completed);
-const session = {
-school, username, password, isMicrosoft,
-browser, page, studentName: scraped.name,
-homeworks: scraped.homeworks,
-selectedHwId: firstIncomplete ? firstIncomplete.id : null,
-showCompleted: !firstIncomplete,
-speed: 'quick'
-};
-userSessions.set(interaction.user.id, session);
-await interaction.editReply(buildSparxDashboard(session));
-} catch (err) {
-await interaction.editReply('Stopped early: ' + err.message);
-} finally {
-if (page) await page.close().catch(() => {});
-}
-}
+    let browser, page;
+    try {
+      await interaction.editReply("Logging into Sparx and loading your homework list...");
+      browser = await getFastBrowser();
+      page = await browser.newPage();
+      await loginToSparx(page, school, username, password, isMicrosoft);
+
+      let scraped = null;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          await page.waitForFunction(() => document.body && document.body.innerText.includes("Homework"), { timeout: 5000 }).catch(() => {});
+          scraped = await page.evaluate(() => {
+            const h = document.querySelector("h1, h2");
+            const name = (h && h.innerText.includes("Hey ")) ? h.innerText.replace("Hey ", "").replace(",", "").trim() : "Student";
+            const lines = document.body.innerText.split("\n").map(l => l.trim()).filter(Boolean);
+            const homeworks = [];
+            for (let i = 0; i < lines.length; i++) {
+              if (lines[i].startsWith("Homework due ")) {
+                const nearby = lines.slice(i, i + 4).join(" ");
+                homeworks.push({ id: "hw_" + homeworks.length, title: lines[i], completed: nearby.includes("Completed") });
+              }
+            }
+            return { name, homeworks };
+          });
+          if (scraped) break;
+        } catch (e) {
+          await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+      if (!scraped) throw new Error("Page redirected too many times. Please try logging in again.");
+
+      const firstIncomplete = scraped.homeworks.find(h => !h.completed);
+      const session = {
+        school, username, password, isMicrosoft,
+        studentName: scraped.name,
+        homeworks: scraped.homeworks,
+        selectedHwId: firstIncomplete ? firstIncomplete.id : null,
+        showCompleted: !firstIncomplete,
+        speed: "quick"
+      };
+      userSessions.set(interaction.user.id, session);
+      await interaction.editReply(buildSparxDashboard(session));
+    } catch (err) {
+      await interaction.editReply("Stopped early: " + err.message);
+    } finally {
+      if (page) await page.close().catch(() => {});
+    }
+  }
 });
 client.login(process.env.DISCORD_TOKEN);
