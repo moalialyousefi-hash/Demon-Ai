@@ -221,8 +221,6 @@ client.on('interactionCreate', async interaction => {
       if (!scraped) throw new Error("Page redirected too many times. Please try logging in again.");
 
       const firstIncomplete = scraped.homeworks.find(h => !h.completed);
-      const oldSession = userSessions.get(interaction.user.id);
-      if (oldSession && oldSession.page) await oldSession.page.close().catch(() => {});
       const session = {
         school, username, password, isMicrosoft,
         page,
