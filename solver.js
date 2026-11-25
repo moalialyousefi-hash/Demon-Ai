@@ -1,19 +1,30 @@
 const puppeteer = require('puppeteer');
-async function getFastBrowser() {
-  return await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--no-zygote", "--single-process"]
-  });
-}
-
 const OpenAI = require('openai');
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
-const emojis = require("./emojis.json");
+const emojis = require('./emojis.json');
 
 const groq = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
   baseURL: 'https://groq.com'
 });
+
+async function getFastBrowser() {
+  return await puppeteer.launch({
+    headless: true,
+    protocolTimeout: 30000,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--no-zygote',
+      '--disable-extensions',
+      '--disable-background-networking',
+      '--renderer-process-limit=1',
+      '--js-flags=--max-old-space-size=256'
+    ]
+  });
+}
 
 function makeEmojiBar(done, total) {
   const segments = 12;
@@ -27,17 +38,21 @@ function makeEmojiBar(done, total) {
 }
 
 function buildProgressPayload(session, taskTitle, statusText, tasks, extraFiles = []) {
-  const speedLabels = { quick: "Quick", normal: "Normal", slow: "Human" };
-  const taskLines = tasks.map((t, idx) => "**Task " + (idx + 1) + "**\n" + makeEmojiBar(t.done, t.total)).join("\n\n");
+  const speedLabels = { quick: 'Quick', normal: 'Normal', slow: 'Human' };
+  const taskLines = tasks
+    .map((t, idx) => '**Task ' + (idx + 1) + '**\n' + makeEmojiBar(t.done, t.total))
+    .join('\n\n');
+
   const embed = new EmbedBuilder()
-    .setTitle("Demon AI • Maths")
+    .setTitle('Demon AI • Maths')
     .setDescription(
-      "**Account:** `Saved` | `" + speedLabels[session.speed] + "` | `" + session.studentName + "`\n" +
-      "**Task:** `Homework`\n" +
-      "**Status:** " + statusText + "\n\n" +
-      "Page **1** of **1**\n" + taskLines
+      '**Account:** `Saved` | `' + speedLabels[session.speed] + '` | `' + session.studentName + '`\n' +
+      '**Task:** `Homework`\n' +
+      '**Status:** ' + statusText + '\n\n' +
+      'Page **1** of **1**\n' + taskLines
     )
-    .setColor("#2B2D31");
+    .setColor('#2B2D31');
+
   return { embeds: [embed], files: extraFiles };
 }
 
@@ -45,31 +60,35 @@ async function dismissCookies(page) {
   await page.evaluate(() => {
     const btns = Array.from(document.querySelectorAll('button'));
     const accept = btns.find(b => b.innerText && b.innerText.trim().toUpperCase().includes('ACCEPT'));
-      if (accept) { accept.click(); return; }
     if (accept) accept.click();
-  });
+  }).catch(() => {});
 }
 
-async function loginToSparx(page, school, username, password, isMicrosoft) {
+async function loginToSparxCore(page, school, username, password, isMicrosoft) {
+  let blockAssets = true;
   await page.setViewport({ width: 1280, height: 800 });
-  await page.setRequestInterception(true);
-  page.on("request", req => {
-    if (["font", "media"].includes(req.resourceType())) req.abort();
-    else req.continue();
-  });
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36');
 
-  await page.goto("https://sparxmaths.uk", { waitUntil: "domcontentloaded", timeout: 30000 });
-  await new Promise(r => setTimeout(r, 800));
-  await dismissCookies(page).catch(() => {});
-  const alreadyIn = await page.evaluate(() => document.body && document.body.innerText.includes("Homework"));
-  if (alreadyIn) return;
+  await page.setRequestInterception(true);
+  page.on('request', req => {
+    if (blockAssets && ['image', 'font', 'media'].includes(req.resourceType())) {
+      req.abort().catch(() => {});
+    } else {
+      req.continue().catch(() => {});
+    }
+  });
 
-  await page.waitForSelector('input', { timeout: 15000 });
-  await dismissCookies(page).catch(() => {});
-  await page.evaluate(() => { const inp = document.querySelector('input'); if (inp) inp.focus(); });
-  await page.type('input', school, { delay: 10 });
-  await new Promise(r => setTimeout(r, 500));
+  await page.goto('https://sparxmaths.uk', { waitUntil: 'domcontentloaded', timeout: 20000 });
+  await new Promise(r => setTimeout(r, 600));
+  await dismissCookies(page);
+
+  await page.waitForSelector('input', { timeout: 12000 });
+  await page.evaluate(() => {
+    const inp = document.querySelector('input');
+    if (inp) inp.focus();
+  });
+  await page.keyboard.type(school, { delay: 10 });
+  await new Promise(r => setTimeout(r, 600));
 
   await page.evaluate((schoolName) => {
     const cleanQuery = schoolName.toLowerCase().replace(/\s+/g, '');
@@ -81,7 +100,8 @@ async function loginToSparx(page, school, username, password, isMicrosoft) {
     });
     if (match) match.click();
   }, school);
-  await new Promise(r => setTimeout(r, 300));
+
+  await new Promise(r => setTimeout(r, 250));
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await new Promise(r => setTimeout(r, 300));
@@ -91,8 +111,9 @@ async function loginToSparx(page, school, username, password, isMicrosoft) {
     const contBtn = btns.find(b => b.innerText && b.innerText.trim().toLowerCase() === 'continue');
     if (contBtn) contBtn.click();
   });
+
   await new Promise(r => setTimeout(r, 700));
-  await dismissCookies(page).catch(() => {});
+  await dismissCookies(page);
 
   if (isMicrosoft) {
     await page.evaluate(() => {
@@ -100,29 +121,40 @@ async function loginToSparx(page, school, username, password, isMicrosoft) {
       const msBtn = buttons.find(b => b.innerText && b.innerText.toLowerCase().includes('microsoft'));
       if (msBtn) msBtn.click();
     });
-    await page.waitForSelector('input[type="email"], input[name="loginfmt"]', { timeout: 15000 });
+    await page.waitForSelector('input[type="email"], input[name="loginfmt"]', { timeout: 12000 });
     await page.type('input[type="email"], input[name="loginfmt"]', username);
     await page.click('input[type="submit"], #idSIButton9');
-    await new Promise(r => setTimeout(r, 900));
-    await page.waitForSelector('input[type="password"], input[name="passwd"]', { timeout: 15000 });
+    await new Promise(r => setTimeout(r, 800));
+    await page.waitForSelector('input[type="password"], input[name="passwd"]', { timeout: 12000 });
     await page.type('input[type="password"], input[name="passwd"]', password);
     await page.click('input[type="submit"], #idSIButton9');
-    await new Promise(r => setTimeout(r, 900));
+    await new Promise(r => setTimeout(r, 800));
     const stayBtn = await page.$('#idSIButton9');
     if (stayBtn) await stayBtn.click();
-    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
+    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 12000 }).catch(() => {});
   } else {
-    await page.waitForSelector('input[type="password"]', { timeout: 15000 });
-    await dismissCookies(page).catch(() => {});
+    await page.waitForSelector('input[type="password"]', { timeout: 12000 });
+    await dismissCookies(page);
     const inputs = await page.$$('input:not([type="hidden"])');
-    await inputs.at(0).type(username);
-    await inputs.at(1).type(password);
+    if (inputs.at(0)) await inputs.at(0).type(username);
+    if (inputs.at(1)) await inputs.at(1).type(password);
     await page.keyboard.press('Enter');
-    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
+    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 12000 }).catch(() => {});
   }
 
-  await page.waitForFunction(() => document.body && document.body.innerText.includes("Homework"), { timeout: 10000 }).catch(() => {});
-  await dismissCookies(page).catch(() => {});
+  blockAssets = false;
+  await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 10000 }).catch(() => {});
+  await dismissCookies(page);
+}
+
+async function loginToSparx(page, school, username, password, isMicrosoft) {
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Login timed out after 35s — Render server may be busy, please try again.')), 35000)
+  );
+  await Promise.race([
+    loginToSparxCore(page, school, username, password, isMicrosoft),
+    timeoutPromise
+  ]);
 }
 
 async function runHomeworkInDM(user, session, targetHw) {
@@ -143,28 +175,22 @@ async function runHomeworkInDM(user, session, targetHw) {
   const bookworkLog = {};
 
   try {
-    if (session.page && !session.page.isClosed()) {
-      page = session.page;
-      session.page = null;
-    } else {
-      browser = await getFastBrowser();
-      page = await browser.newPage();
-      await loginToSparx(page, session.school, session.username, session.password, session.isMicrosoft);
-    }
+    browser = await getFastBrowser();
+    page = await browser.newPage();
+
+    await loginToSparx(page, session.school, session.username, session.password, session.isMicrosoft);
 
     await dmMsg.edit(
       buildProgressPayload(session, targetHw.title, 'Opening ' + targetHw.title + '...', tasks)
     );
 
-    // Expand selected homework accordion
     await page.evaluate((hwTitle) => {
       const rows = Array.from(document.querySelectorAll('div, button, a, span'));
       const target = rows.find(el => el.innerText && el.innerText.includes(hwTitle) && el.innerText.length < 150);
       if (target) target.click();
     }, targetHw.title);
-    await new Promise(r => setTimeout(r, 700));
+    await new Promise(r => setTimeout(r, 800));
 
-    // Click first task item inside it
     await page.evaluate(() => {
       const links = Array.from(document.querySelectorAll('a, button, div'));
       const taskItem = links.find(el =>
@@ -172,10 +198,11 @@ async function runHomeworkInDM(user, session, targetHw) {
       );
       if (taskItem) taskItem.click();
     });
-    await new Promise(r => setTimeout(r, 900));
+    await new Promise(r => setTimeout(r, 1200));
+    await dismissCookies(page);
 
     for (let i = 0; i < 6; i++) {
-      tasks.done = i;
+      tasks.at(0).done = i;
       const qCode = '1' + String.fromCharCode(65 + i);
 
       await dmMsg.edit(
@@ -186,14 +213,14 @@ async function runHomeworkInDM(user, session, targetHw) {
       if (isBookwork) {
         const codeNeeded = await page.evaluate(() => {
           const m = document.body.innerText.match(/Bookwork code:\s*([A-Z0-9]+)/i);
-          return m ? m : null;
+          return m ? m.at(1) : null;
         });
         if (codeNeeded && bookworkLog[codeNeeded]) {
           await page.evaluate((ans) => {
             const btn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes(ans));
             if (btn) btn.click();
           }, bookworkLog[codeNeeded]);
-          await new Promise(r => setTimeout(r, 700));
+          await new Promise(r => setTimeout(r, 800));
           continue;
         }
       }
@@ -201,7 +228,7 @@ async function runHomeworkInDM(user, session, targetHw) {
       const shot = await page.screenshot({ encoding: 'base64' });
       const currentCode = await page.evaluate(() => {
         const m = document.body.innerText.match(/Bookwork code:\s*([A-Z0-9]+)/i);
-        return m ? m : null;
+        return m ? m.at(1) : null;
       });
 
       const res = await groq.chat.completions.create({
@@ -216,7 +243,7 @@ async function runHomeworkInDM(user, session, targetHw) {
         max_tokens: 100
       });
 
-      const answer = res.choices.message.content.trim();
+      const answer = res.choices.at(0).message.content.trim();
       if (currentCode) bookworkLog[currentCode] = answer;
 
       await new Promise(r => setTimeout(r, delayMs));
@@ -224,42 +251,41 @@ async function runHomeworkInDM(user, session, targetHw) {
       const inputSel = 'input[type="text"], input[type="number"]';
       if (await page.$(inputSel)) {
         await page.click(inputSel, { clickCount: 3 });
-        await page.type(inputSel, answer);
-        await page.keyboard.press('Enter');
+        await page.keyboard.press('Backspace');
+        await page.type(inputSel, answer, { delay: 30 });
       } else {
         await page.evaluate((ans) => {
-const match = Array.from(document.querySelectorAll('button, [role="button"]')).find(el => el.innerText.trim() === ans);
-if (match) match.click();
+const btns = Array.from(document.querySelectorAll('button, [role="button"]'));
+const opt = btns.find(b => b.innerText && b.innerText.trim().toLowerCase() === ans.toLowerCase());
+if (opt) opt.click();
 }, answer);
 }
-await new Promise(r => setTimeout(r, 700));
 await page.evaluate(() => {
-const nextBtn = Array.from(document.querySelectorAll('button')).find(b =>
-b.innerText && (b.innerText.includes('Next') || b.innerText.includes('Continue') || b.innerText.includes('Submit'))
-);
-if (nextBtn) nextBtn.click();
+const btns = Array.from(document.querySelectorAll('button'));
+const sub = btns.find(b => b.innerText && ['submit', 'check', 'answer'].some(w => b.innerText.toLowerCase().includes(w)));
+if (sub) sub.click();
 });
-await new Promise(r => setTimeout(r, 700));
+await new Promise(r => setTimeout(r, 1200));
+await page.evaluate(() => {
+const btns = Array.from(document.querySelectorAll('button'));
+const next = btns.find(b => b.innerText && ['next', 'continue'].some(w => b.innerText.toLowerCase().includes(w)));
+if (next) next.click();
+});
+await new Promise(r => setTimeout(r, 1000));
 }
-tasks.done = 6;
+tasks.at(0).done = 6;
 await dmMsg.edit(
 buildProgressPayload(session, targetHw.title, 'Completed ✅', tasks)
 );
 } catch (err) {
-console.error(err);
-const debugShot = page ? await page.screenshot().catch(() => null) : null;
+const errShot = page ? await page.screenshot().catch(() => null) : null;
+const files = errShot ? [new AttachmentBuilder(errShot, { name: 'error.png' })] : [];
 await dmMsg.edit(
-buildProgressPayload(
-session,
-targetHw.title,
-'Stopped: ' + err.message,
-tasks,
-debugShot ? [new AttachmentBuilder(debugShot, { name: 'debug.png' })] : []
-)
+buildProgressPayload(session, targetHw.title, 'Stopped: ' + err.message, tasks, files)
 );
 } finally {
 if (page) await page.close().catch(() => {});
-    if (browser) await browser.close().catch(() => {});
+if (browser) await browser.close().catch(() => {});
 }
 }
 module.exports = { loginToSparx, runHomeworkInDM, getFastBrowser };
