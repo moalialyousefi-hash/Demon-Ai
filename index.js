@@ -176,7 +176,7 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     if (interaction.isModalSubmit() && (interaction.customId === 'sparx_login_modal' || interaction.customId === 'ms_login_modal')) {
-      await interaction.deferReply({ ephemeral: true });
+      console.log("[M1] deferReply start"); await interaction.deferReply({ flags: 64 }); console.log("[M2] deferReply done");
       const isMicrosoft = interaction.customId === 'ms_login_modal';
       const school = interaction.fields.getTextInputValue('school_input');
       const username = interaction.fields.getTextInputValue('username_input');
@@ -196,9 +196,9 @@ client.on('interactionCreate', async (interaction) => {
           interaction.editReply('Logging into Sparx Maths (' + seconds + 's elapsed)...').catch(() => {});
         }, 5000);
 
-        browser = await getFastBrowser();
+        console.log("[M3] getFastBrowser start"); browser = await getFastBrowser(); console.log("[M4] getFastBrowser done");
         page = await browser.newPage();
-        await loginToSparx(page, school, username, password, isMicrosoft);
+        console.log("[M5] loginToSparx start"); await loginToSparx(page, school, username, password, isMicrosoft); console.log("[M6] loginToSparx done");
 
         clearInterval(statusTicker);
         await interaction.editReply('Step 3/3: Reading your homework list...');
