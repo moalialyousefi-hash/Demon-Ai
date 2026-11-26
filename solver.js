@@ -15,6 +15,7 @@ async function getFastBrowser() {
   if (process.env.BROWSERLESS_TOKEN) {
     console.log("[STEP] Connecting to Browserless...");
     console.log("[STEP] Connecting to Browserless...");
+    console.log("[STEP] Connecting to Browserless...");
     return await puppeteer.connect({
       browserWSEndpoint: "wss://chrome.browserless.io?token=" + process.env.BROWSERLESS_TOKEN.trim()
     });
@@ -101,11 +102,11 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
   }
 
   // 2. Full lightweight login (runs only on first login or when cookies expire)
-  state.step = 'Opening Sparx login'; console.log("[STEP]", state.step); console.log("[STEP]", state.step);
+  state.step = 'Opening Sparx login'; console.log("[STEP]", state.step); console.log("[STEP]", state.step); console.log("[STEP]", state.step);
   await page.goto('https://sparxmaths.uk', { waitUntil: 'domcontentloaded', timeout: 20000 });
   await dismissCookies(page);
 
-  state.step = 'Typing school name'; console.log("[STEP]", state.step); console.log("[STEP]", state.step);
+  state.step = 'Typing school name'; console.log("[STEP]", state.step); console.log("[STEP]", state.step); console.log("[STEP]", state.step);
   await page.waitForSelector('input', { timeout: 12000 });
   await page.evaluate(() => {
     const inp = document.querySelector('input');
@@ -137,7 +138,7 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
   await dismissCookies(page);
 
   if (isMicrosoft) {
-    state.step = 'Microsoft sign-in'; console.log("[STEP]", state.step); console.log("[STEP]", state.step);
+    state.step = 'Microsoft sign-in'; console.log("[STEP]", state.step); console.log("[STEP]", state.step); console.log("[STEP]", state.step);
     await page.evaluate(() => {
       const buttons = Array.from(document.querySelectorAll('button, a'));
       const msBtn = buttons.find(b => b.innerText && b.innerText.toLowerCase().includes('microsoft'));
@@ -155,7 +156,7 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     if (stayBtn) await stayBtn.click();
     await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 12000 }).catch(() => {});
   } else {
-    state.step = 'Entering username & password'; console.log("[STEP]", state.step); console.log("[STEP]", state.step);
+    state.step = 'Entering username & password'; console.log("[STEP]", state.step); console.log("[STEP]", state.step); console.log("[STEP]", state.step);
     await page.waitForSelector('input[type="password"]', { timeout: 12000 });
     await dismissCookies(page);
     const inputs = await page.$$('input:not([type="hidden"])');
@@ -165,7 +166,7 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 12000 }).catch(() => {});
   }
 
-  state.step = 'Loading Homework dashboard'; console.log("[STEP]", state.step); console.log("[STEP]", state.step);
+  state.step = 'Loading Homework dashboard'; console.log("[STEP]", state.step); console.log("[STEP]", state.step); console.log("[STEP]", state.step);
   await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 5000 }).catch(() => {});
   await dismissCookies(page);
 
