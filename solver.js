@@ -225,7 +225,7 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
   state.step = "Loading Homework dashboard";
   console.log("[STEP]", state.step);
   for (let i = 0; i < 10; i++) {
-    await new Promise(r => setTimeout(r, 800));
+    await new Promise(r => setTimeout(r, 700));
     const ready = await page.evaluate(() => document.body && /Homework|Compulsory|XP Boost|Target/i.test(document.body.innerText)).catch(() => false);
     if (ready) break;
   }

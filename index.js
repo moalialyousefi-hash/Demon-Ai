@@ -204,8 +204,11 @@ client.on('interactionCreate', async (interaction) => {
         await interaction.editReply('Step 3/3: Reading your homework list...');
 
         await new Promise(r => setTimeout(r, 1000));
-        await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 4000 }).catch(() => {});
-        const scraped = await page.evaluate(() => {
+        let scraped = { name: "Student", homeworks: [] };
+        for (let attempt = 0; attempt < 6; attempt++) {
+          await new Promise(r => setTimeout(r, 700));
+          try {
+            scraped = await page.evaluate(() => {
           const text = document.body ? document.body.innerText : "";
           const nameMatch = text.match(/Hey\s+([A-Za-z0-9_-]+)/i);
           const name = nameMatch ? nameMatch.at(1) : "Student";
@@ -238,7 +241,10 @@ client.on('interactionCreate', async (interaction) => {
             }
           }
           return { name, homeworks };
-        });
+            });
+            if (scraped.homeworks.length > 0 || scraped.name !== "Student") break;
+          } catch (e) {}
+        }
 const firstIncomplete = scraped.homeworks.find(h => !h.completed);
 const session = {
 school, username, password, isMicrosoft,
