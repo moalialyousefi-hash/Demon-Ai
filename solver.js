@@ -223,8 +223,9 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
 
   state.step = 'Loading Homework dashboard';
   console.log('[STEP]', state.step);
-  await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 5000 }).catch(() => {});
-  await dismissCookies(page);
+  await new Promise(r => setTimeout(r, 1500));
+  await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 6000 }).catch(() => {});
+  await dismissCookies(page).catch(() => {});
 
   const freshCookies = await page.cookies().catch(() => []);
   if (freshCookies.length > 0) cookieJar.set(cacheKey, freshCookies);

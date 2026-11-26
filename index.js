@@ -203,7 +203,8 @@ client.on('interactionCreate', async (interaction) => {
         clearInterval(statusTicker);
         await interaction.editReply('Step 3/3: Reading your homework list...');
 
-        await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 3000 }).catch(() => {});
+        await new Promise(r => setTimeout(r, 1000));
+        await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 4000 }).catch(() => {});
         const scraped = await page.evaluate(() => {
 const h = document.querySelector('h1, h2');
 const name = (h && h.innerText.includes('Hey ')) ? h.innerText.replace('Hey ', '').replace(',', '').trim() : 'Student';
