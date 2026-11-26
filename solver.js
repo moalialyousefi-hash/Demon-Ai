@@ -56,7 +56,7 @@ async function scanAndClick(page, matcherFn, arg = null) {
       }
     }
     return null;
-  }, matcherFn.toString(), arg);
+  }, matcherFn.toString(), arg).catch(() => null);
 
   if (box) {
     await realMouseClick(page, box.x, box.y);
@@ -132,7 +132,8 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
   state.step = 'Opening Sparx student login';
   console.log('[STEP]', state.step);
   await page.goto('https://sparxmaths.uk', { waitUntil: 'domcontentloaded', timeout: 15000 });
-  await new Promise(r => setTimeout(r, 400));
+  await page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 6000 }).catch(() => {});
+  await new Promise(r => setTimeout(r, 500));
   await dismissCookies(page);
 
   state.step = 'Typing school name';
