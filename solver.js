@@ -322,17 +322,25 @@ await loginToSparx(page, session.school, session.username, session.password, ses
 await dmMsg.edit(
 buildProgressPayload(session, targetHw.title, 'Opening ' + targetHw.title + '...', tasks)
 );
-await scanAndClick(page, (el, hwTitle) => {
-const t = (el.innerText || '').trim();
-return t.includes(hwTitle) && t.length < 150;
-}, targetHw.title);
-await new Promise(r => setTimeout(r, 800));
-await scanAndClick(page, (el) => {
-const t = (el.innerText || '').trim();
-return (t.includes('1A') || t.includes('Task 1') || el.getAttribute('href')?.includes('/task/')) && t.length < 100;
-});
-await new Promise(r => setTimeout(r, 1000));
-await dismissCookies(page);
+  const task1AlreadyVisible = await page.evaluate(() => document.body && document.body.innerText.includes("Task 1")).catch(() => false);
+  if (!task1AlreadyVisible) {
+    await scanAndClick(page, (el, hwTitle) => {
+      const t = (el.innerText || "").trim();
+      return t.includes(hwTitle) && t.length < 150;
+    }, targetHw.title);
+    await new Promise(r => setTimeout(r, 800));
+  }
+  await scanAndClick(page, (el) => {
+    const t = (el.innerText || "").trim();
+    return /^Task\s*1\b/i.test(t) && t.length < 40;
+  });
+  await new Promise(r => setTimeout(r, 900));
+  await scanAndClick(page, (el) => {
+    const t = (el.innerText || "").trim();
+    return (t === "1A" || t.startsWith("1A ") || el.getAttribute("href")?.includes("/task/")) && t.length < 60;
+  });
+  await new Promise(r => setTimeout(r, 1000));
+  await dismissCookies(page);
 for (let i = 0; i < 6; i++) {
 tasks.at(0).done = i;
 const qCode = '1' + String.fromCharCode(65 + i);
