@@ -14,7 +14,7 @@ const cookieJar = new Map();
 async function getFastBrowser() {
   if (process.env.BROWSERLESS_TOKEN) {
     return await puppeteer.connect({
-      browserWSEndpoint: "wss://chrome.browserless.io?token=" + process.env.BROWSERLESS_TOKEN.trim()
+      browserWSEndpoint: "wss://production-lon.browserless.io?token=" + process.env.BROWSERLESS_TOKEN.trim()
     });
   }
   return await puppeteer.launch({
