@@ -68,7 +68,7 @@ if (interaction.isChatInputCommand() && interaction.commandName === 'setup') {
 console.log('[CMD] /setup by ' + interaction.user.tag);
 const embed = new EmbedBuilder()
 .setTitle('Demon AI • Sparx Maths Solver')
-.setDescription('Click ▶ Sparx Login or 🪟 Microsoft Login below to load your homework list.')
+.setDescription('Select a login method below to load your tasks and start solving automatically.\n\n• **▶ Sparx Login** — For standard Sparx username & password\n• **🪟 Microsoft Login** — For school Microsoft 365 email & password\n• **Live DM Progress** — Sends task progress bars directly to your DMs')
 .setColor('#1DB954');
 const row = new ActionRowBuilder().addComponents(
 new ButtonBuilder().setCustomId('open_sparx_modal').setLabel('▶ Sparx Login').setStyle(ButtonStyle.Success),
