@@ -231,7 +231,7 @@ await interaction.editReply(buildSparxDashboard(session));
 } catch (err) {
 clearInterval(statusTicker);
 console.error('[LOGIN ERROR]', err);
-const files = err.screenshot ? [new AttachmentBuilder(err.screenshot, { name: 'login_stuck.png' })] : [];
+const files = err.screenshot ? [new AttachmentBuilder(Buffer.from(err.screenshot), { name: 'login_stuck.png' })] : [];
 await interaction.editReply({ content: 'Stopped early: ' + err.message, files });
 } finally {
 clearInterval(statusTicker);

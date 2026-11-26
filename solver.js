@@ -348,7 +348,7 @@ buildProgressPayload(session, targetHw.title, 'Completed ✅', tasks)
 );
 } catch (err) {
 const errShot = page ? await page.screenshot().catch(() => null) : null;
-const files = errShot ? [new AttachmentBuilder(errShot, { name: 'error.png' })] : [];
+const files = errShot ? [new AttachmentBuilder(Buffer.from(errShot), { name: 'error.png' })] : [];
 await dmMsg.edit(
 buildProgressPayload(session, targetHw.title, 'Stopped: ' + err.message, tasks, files)
 );
