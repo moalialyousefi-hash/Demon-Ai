@@ -8,23 +8,24 @@ const groq = new OpenAI({
   baseURL: 'https://groq.com'
 });
 
-// Cache Sparx session cookies in memory per account so logins & task starts take ~2 seconds
 const cookieJar = new Map();
 
 async function getFastBrowser() {
   if (process.env.BROWSERLESS_TOKEN) {
-    console.log("[STEP] Connecting to Browserless...");
-    console.log("[STEP] Connecting to Browserless...");
-    console.log("[STEP] Connecting to Browserless...");
-    console.log("[STEP] Connecting to Browserless...");
-    return await puppeteer.connect({
-      browserWSEndpoint: "wss://chrome.browserless.io?token=" + process.env.BROWSERLESS_TOKEN.trim()
+    const token = process.env.BROWSERLESS_TOKEN.trim();
+    console.log('[STEP] Connecting to Browserless...');
+    const connectPromise = puppeteer.connect({
+      browserWSEndpoint: 'wss://production-lon.browserless.io?token=' + token
     });
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Browserless connection timed out (check BROWSERLESS_TOKEN)')), 10000)
+    );
+    return await Promise.race([connectPromise, timeout]);
   }
   return await puppeteer.launch({
     headless: true,
     protocolTimeout: 45000,
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--no-zygote"]
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-zygote']
   });
 }
 
@@ -67,54 +68,41 @@ async function dismissCookies(page) {
 }
 
 async function loginToSparxCore(page, school, username, password, isMicrosoft, state) {
-  let lightMode = true;
   const cacheKey = (school + ':' + username).toLowerCase();
 
   await page.setViewport({ width: 1280, height: 800 });
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36');
 
-  // Block heavy stylesheets, images, fonts & analytics during login to cut Render CPU load by ~75%
-  await page.setRequestInterception(true);
-  page.on('request', req => {
-    const url = req.url();
-    if (url.includes('sentry') || url.includes('google-analytics') || url.includes('googletagmanager') || url.includes('hotjar')) {
-      return req.abort().catch(() => {});
-    }
-    if (lightMode && ['image', 'stylesheet', 'font', 'media'].includes(req.resourceType())) {
-      return req.abort().catch(() => {});
-    }
-    req.continue().catch(() => {});
-  });
-
-  // 1. Fast path: try cached session cookies first (~2 seconds!)
   const savedCookies = cookieJar.get(cacheKey);
   if (savedCookies && savedCookies.length > 0) {
     state.step = 'Restoring saved session';
+    console.log('[STEP]', state.step);
     await page.setCookie(...savedCookies).catch(() => {});
     await page.goto('https://sparxmaths.uk', { waitUntil: 'domcontentloaded', timeout: 15000 });
-    await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 5000 }).catch(() => {});
+    await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 4000 }).catch(() => {});
     const isLoggedIn = await page.evaluate(() => document.body && document.body.innerText.includes('Homework'));
     if (isLoggedIn) {
-      lightMode = false;
       await dismissCookies(page);
+      console.log('[STEP] Restored session in ~2s!');
       return;
     }
     cookieJar.delete(cacheKey);
   }
 
-  // 2. Full lightweight login (runs only on first login or when cookies expire)
-  state.step = 'Opening Sparx login'; console.log("[STEP]", state.step); console.log("[STEP]", state.step); console.log("[STEP]", state.step); console.log("[STEP]", state.step);
+  state.step = 'Opening Sparx student login';
+  console.log('[STEP]', state.step);
   await page.goto('https://sparxmaths.uk', { waitUntil: 'domcontentloaded', timeout: 20000 });
   await dismissCookies(page);
 
-  state.step = 'Typing school name'; console.log("[STEP]", state.step); console.log("[STEP]", state.step); console.log("[STEP]", state.step); console.log("[STEP]", state.step);
+  state.step = 'Typing school name';
+  console.log('[STEP]', state.step);
   await page.waitForSelector('input', { timeout: 12000 });
   await page.evaluate(() => {
     const inp = document.querySelector('input');
     if (inp) inp.focus();
   });
-  await page.keyboard.type(school, { delay: 1 });
-  await new Promise(r => setTimeout(r, 250));
+  await page.keyboard.type(school, { delay: 5 });
+  await new Promise(r => setTimeout(r, 400));
 
   await page.evaluate((schoolName) => {
     const cleanQuery = schoolName.toLowerCase().replace(/\s+/g, '');
@@ -129,6 +117,7 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
 
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
+  await new Promise(r => setTimeout(r, 200));
 
   await page.evaluate(() => {
     const btns = Array.from(document.querySelectorAll('button'));
@@ -139,7 +128,8 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
   await dismissCookies(page);
 
   if (isMicrosoft) {
-    state.step = 'Microsoft sign-in'; console.log("[STEP]", state.step); console.log("[STEP]", state.step); console.log("[STEP]", state.step); console.log("[STEP]", state.step);
+    state.step = 'Microsoft sign-in';
+    console.log('[STEP]', state.step);
     await page.evaluate(() => {
       const buttons = Array.from(document.querySelectorAll('button, a'));
       const msBtn = buttons.find(b => b.innerText && b.innerText.toLowerCase().includes('microsoft'));
@@ -157,7 +147,8 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     if (stayBtn) await stayBtn.click();
     await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 12000 }).catch(() => {});
   } else {
-    state.step = 'Entering username & password'; console.log("[STEP]", state.step); console.log("[STEP]", state.step); console.log("[STEP]", state.step); console.log("[STEP]", state.step);
+    state.step = 'Entering username & password';
+    console.log('[STEP]', state.step);
     await page.waitForSelector('input[type="password"]', { timeout: 12000 });
     await dismissCookies(page);
     const inputs = await page.$$('input:not([type="hidden"])');
@@ -167,23 +158,20 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 12000 }).catch(() => {});
   }
 
-  state.step = 'Loading Homework dashboard'; console.log("[STEP]", state.step); console.log("[STEP]", state.step); console.log("[STEP]", state.step); console.log("[STEP]", state.step);
-  await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 5000 }).catch(() => {});
+  state.step = 'Loading Homework dashboard';
+  console.log('[STEP]', state.step);
+  await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 6000 }).catch(() => {});
   await dismissCookies(page);
 
-  // Save session cookies for instant ~2s future logins & task starts
   const freshCookies = await page.cookies().catch(() => []);
   if (freshCookies.length > 0) cookieJar.set(cacheKey, freshCookies);
-
-  // Re-enable images & stylesheets so Groq AI can see math diagrams clearly
-  lightMode = false;
-  console.log("[STEP] Login finished!");
+  console.log('[STEP] Login finished!');
 }
 
 async function loginToSparx(page, school, username, password, isMicrosoft) {
   const state = { step: 'Launching Chrome' };
   const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('Timed out at step: ' + state.step)), 50000)
+    setTimeout(() => reject(new Error('Timed out at step: ' + state.step)), 35000)
   );
   await Promise.race([
     loginToSparxCore(page, school, username, password, isMicrosoft, state),
@@ -214,11 +202,6 @@ async function runHomeworkInDM(user, session, targetHw) {
 
     await loginToSparx(page, session.school, session.username, session.password, session.isMicrosoft);
 
-    // Reload with full CSS & images enabled before taking screenshots for Groq AI
-    await page.reload({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
-    await new Promise(r => setTimeout(r, 800));
-    await dismissCookies(page);
-
     await dmMsg.edit(
       buildProgressPayload(session, targetHw.title, 'Opening ' + targetHw.title + '...', tasks)
     );
@@ -245,21 +228,22 @@ async function runHomeworkInDM(user, session, targetHw) {
       const qCode = '1' + String.fromCharCode(65 + i);
 
       await dmMsg.edit(
-buildProgressPayload(session, targetHw.title, 'Solving ' + qCode + ' in Task 1...', tasks)
-);
-const isBookwork = await page.evaluate(() => document.body.innerText.includes('Bookwork check'));
-if (isBookwork) {
-const codeNeeded = await page.evaluate(() => {
-const m = document.body.innerText.match(/Bookwork code:\s*([A-Z0-9]+)/i);
-return m ? m.at(1) : null;
-});
-if (codeNeeded && bookworkLog[codeNeeded]) {
-await page.evaluate((ans) => {
-const btn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes(ans));
-if (btn) btn.click();
-}, bookworkLog[codeNeeded]);
-await new Promise(r => setTimeout(r, 800));
-continue;
+        buildProgressPayload(session, targetHw.title, 'Solving ' + qCode + ' in Task 1...', tasks)
+      );
+
+      const isBookwork = await page.evaluate(() => document.body.innerText.includes('Bookwork check'));
+      if (isBookwork) {
+        const codeNeeded = await page.evaluate(() => {
+          const m = document.body.innerText.match(/Bookwork code:\s*([A-Z0-9]+)/i);
+          return m ? m.at(1) : null;
+        });
+        if (codeNeeded && bookworkLog[codeNeeded]) {
+          await page.evaluate((ans) => {
+            const btn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes(ans));
+            if (btn) btn.click();
+          }, bookworkLog[codeNeeded]);
+          await new Promise(r => setTimeout(r, 800));
+          continue;
 }
 }
 const shot = await page.screenshot({ encoding: 'base64' });
