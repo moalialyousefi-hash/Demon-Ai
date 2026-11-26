@@ -65,18 +65,27 @@ console.log('Dashboard /setup command registered!');
 client.on('interactionCreate', async (interaction) => {
 try {
 if (interaction.isChatInputCommand() && interaction.commandName === 'setup') {
-console.log('[CMD] /setup by ' + interaction.user.tag);
-const embed = new EmbedBuilder()
-.setTitle('Demon AI • Sparx Maths Solver')
-.setDescription('Select a login method below to load your tasks and start solving automatically.\n\n• **▶ Sparx Login** — For standard Sparx username & password\n• **🪟 Microsoft Login** — For school Microsoft 365 email & password\n• **Live DM Progress** — Sends task progress bars directly to your DMs')
-.setColor('#1DB954');
-const row = new ActionRowBuilder().addComponents(
-new ButtonBuilder().setCustomId('open_sparx_modal').setLabel('▶ Sparx Login').setStyle(ButtonStyle.Success),
-new ButtonBuilder().setCustomId('open_ms_modal').setLabel('🪟 Microsoft Login').setStyle(ButtonStyle.Primary),
-new ButtonBuilder().setCustomId('saved_account_btn').setLabel('Saved Account').setStyle(ButtonStyle.Secondary),
-new ButtonBuilder().setCustomId('help_btn').setLabel('Help').setStyle(ButtonStyle.Secondary)
-);
-return await interaction.reply({ embeds: [embed], components: [row] });
+      console.log('[CMD] /setup by ' + interaction.user.tag);
+      const embed = new EmbedBuilder()
+        .setTitle('Demon ai')
+        .setThumbnail(client.user.displayAvatarURL())
+        .setDescription(
+          'Choose your login method below to open your Sparx Maths dashboard.\n\n' +
+          '• **▶ Sparx Login** — For standard Sparx username & password\n' +
+          '• **🪟 Microsoft Login** — For school Microsoft 365 email & password\n' +
+          '• **Live DM Progress** — Sends task progress bars directly to your DMs'
+        )
+        .setFooter({ text: 'Demon AI • Automated Homework Assistant', iconURL: client.user.displayAvatarURL() })
+        .setColor('#1DB954');
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('open_sparx_modal').setLabel('▶ Sparx Login').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('open_ms_modal').setLabel('🪟 Microsoft Login').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('saved_account_btn').setLabel('Saved Account').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('help_btn').setLabel('Help').setStyle(ButtonStyle.Secondary)
+      );
+
+      return await interaction.reply({ embeds: [embed], components: [row] });
 }
 if (interaction.isButton()) {
 console.log('[BTN] ' + interaction.customId + ' by ' + interaction.user.tag);
