@@ -189,15 +189,18 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     console.log('[STEP]', state.step);
     await page.waitForSelector('input[type="password"]', { timeout: 10000 });
     await dismissCookies(page);
-    const inputs = await page.$$('input:not([type="hidden"])');
-    if (inputs.at(0)) {
-      const box0 = await inputs.at(0).boundingBox();
-      if (box0) await realMouseClick(page, box0.x + box0.width / 2, box0.y + box0.height / 2);
+    await new Promise(r => setTimeout(r, 300));
+    const boxes = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll("input:not([type=hidden])"))
+        .map(el => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width }; })
+        .filter(b => b.w > 20);
+    });
+    if (boxes[0]) {
+      await realMouseClick(page, boxes[0].x, boxes[0].y);
       await page.keyboard.type(username, { delay: 10 });
     }
-    if (inputs.at(1)) {
-      const box1 = await inputs.at(1).boundingBox();
-      if (box1) await realMouseClick(page, box1.x + box1.width / 2, box1.y + box1.height / 2);
+    if (boxes[1]) {
+      await realMouseClick(page, boxes[1].x, boxes[1].y);
       await page.keyboard.type(password, { delay: 10 });
     }
     const clickedLogin = await scanAndClick(page, (el) => {
