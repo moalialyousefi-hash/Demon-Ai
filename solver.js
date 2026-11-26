@@ -13,12 +13,9 @@ const cookieJar = new Map();
 
 async function getFastBrowser() {
   if (process.env.BROWSERLESS_TOKEN) {
-    const token = process.env.BROWSERLESS_TOKEN.trim();
-    const connectPromise = puppeteer.connect({
-      browserWSEndpoint: "wss://production-lon.browserless.io?token=" + token
+    return await puppeteer.connect({
+      browserWSEndpoint: "wss://chrome.browserless.io?token=" + process.env.BROWSERLESS_TOKEN.trim()
     });
-    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Browserless connection timed out (check BROWSERLESS_TOKEN)")), 10000));
-    return await Promise.race([connectPromise, timeout]);
   }
   return await puppeteer.launch({
     headless: true,
