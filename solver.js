@@ -32,6 +32,7 @@ async function getFastBrowser() {
   console.log('[STEP] Launching local Chrome...');
   return await puppeteer.launch({
     headless: true,
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     protocolTimeout: 30000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-zygote', '--renderer-process-limit=1']
   });
