@@ -14,33 +14,35 @@ async function getFastBrowser() {
   if (process.env.BROWSERLESS_TOKEN) {
     const token = process.env.BROWSERLESS_TOKEN.trim();
     const endpoints = [
-      'wss://production-sfo.browserless.io?token=' + token,
-      'wss://production-lon.browserless.io?token=' + token
+      'wss://production-lon.browserless.io?token=' + token,
+      'wss://production-sfo.browserless.io?token=' + token
     ];
     for (const ep of endpoints) {
       try {
-        console.log('[STEP] Connecting to Browserless:', ep.split('?')[0]);
+        console.log('[STEP] Connecting to Browserless:', ep.split('?'));
         return await Promise.race([
           puppeteer.connect({ browserWSEndpoint: ep }),
           new Promise((_, rej) => setTimeout(() => rej(new Error('4s timeout')), 4000))
         ]);
       } catch (e) {
-        console.log('[BROWSERLESS SKIP]', ep.split('?')[0], e.message);
+        console.log('[BROWSERLESS SKIP]', ep.split('?'), e.message);
       }
     }
   }
-  console.log('[STEP] Launching local Chrome...');
+  console.log('[STEP] Launching local Chromium...');
   return await puppeteer.launch({
     headless: true,
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-    protocolTimeout: 30000,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-zygote', '--renderer-process-limit=1']
+    protocolTimeout: 45000,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-zygote']
   });
 }
 
 async function realMouseClick(page, x, y) {
-  await page.mouse.move(x, y, { steps: 4 });
+  await page.mouse.move(x, y, { steps: 5 });
+  await new Promise(r => setTimeout(r, 60));
   await page.mouse.down();
+  await new Promise(r => setTimeout(r, 40));
   await page.mouse.up();
 }
 
@@ -118,12 +120,15 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     state.step = 'Restoring saved session';
     console.log('[STEP]', state.step);
     await page.setCookie(...savedCookies).catch(() => {});
-    await page.goto('https://sparxmaths.uk', { waitUntil: 'domcontentloaded', timeout: 12000 });
-    await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 3000 }).catch(() => {});
-    const isLoggedIn = await page.evaluate(() => document.body && document.body.innerText.includes('Homework'));
+    await page.goto('https://sparxmaths.uk', { waitUntil: 'domcontentloaded', timeout: 15000 });
+    await new Promise(r => setTimeout(r, 1200));
+    const isLoggedIn = await page.evaluate(() => {
+      const t = document.body ? document.body.innerText : '';
+      return !t.includes('Use your Sparx login') && /Homework|Compulsory|XP Boost|Target/i.test(t);
+    }).catch(() => false);
     if (isLoggedIn) {
       await dismissCookies(page);
-      console.log('[STEP] Restored session in ~2s!');
+      console.log('[STEP] Restored session!');
       return;
     }
     cookieJar.delete(cacheKey);
@@ -131,17 +136,16 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
 
   state.step = 'Opening Sparx student login';
   console.log('[STEP]', state.step);
-  await page.goto('https://sparxmaths.uk', { waitUntil: 'domcontentloaded', timeout: 15000 });
-  await page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 6000 }).catch(() => {});
-  await new Promise(r => setTimeout(r, 500));
+  await page.goto('https://sparxmaths.uk', { waitUntil: 'domcontentloaded', timeout: 20000 });
+  await new Promise(r => setTimeout(r, 600));
   await dismissCookies(page);
 
   state.step = 'Typing school name';
   console.log('[STEP]', state.step);
-  await page.waitForSelector('input', { timeout: 10000 });
+  await page.waitForSelector('input', { timeout: 12000 });
   await scanAndClick(page, (el) => el.tagName === 'INPUT' && el.type !== 'hidden');
-  await page.keyboard.type(school, { delay: 10 });
-  await new Promise(r => setTimeout(r, 500));
+  await page.keyboard.type(school, { delay: 12 });
+  await new Promise(r => setTimeout(r, 600));
 
   state.step = 'Selecting school from dropdown';
   console.log('[STEP]', state.step);
@@ -156,14 +160,15 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
   }
-  await new Promise(r => setTimeout(r, 200));
+  await new Promise(r => setTimeout(r, 300));
 
   await scanAndClick(page, (el) => {
     if (el.tagName !== 'BUTTON' && el.getAttribute('role') !== 'button') return false;
     return (el.innerText || '').trim().toLowerCase() === 'continue';
   });
 
-  await new Promise(r => setTimeout(r, 400));
+  await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 6000 }).catch(() => {});
+  await new Promise(r => setTimeout(r, 600));
   await dismissCookies(page);
 
   if (isMicrosoft) {
@@ -173,89 +178,106 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
       if (!['BUTTON', 'A'].includes(el.tagName) && el.getAttribute('role') !== 'button') return false;
       return (el.innerText || '').toLowerCase().includes('microsoft');
     });
-    await page.waitForSelector('input[type="email"], input[name="loginfmt"]', { timeout: 10000 });
+    await page.waitForSelector('input[type="email"], input[name="loginfmt"]', { timeout: 12000 });
     await scanAndClick(page, (el) => el.tagName === 'INPUT' && (el.type === 'email' || el.name === 'loginfmt'));
-    await page.keyboard.type(username, { delay: 10 });
+    await page.keyboard.type(username, { delay: 12 });
     await page.click('input[type="submit"], #idSIButton9');
-    await new Promise(r => setTimeout(r, 500));
-    await page.waitForSelector('input[type="password"], input[name="passwd"]', { timeout: 10000 });
+    await new Promise(r => setTimeout(r, 700));
+    await page.waitForSelector('input[type="password"], input[name="passwd"]', { timeout: 12000 });
     await scanAndClick(page, (el) => el.tagName === 'INPUT' && el.type === 'password');
-    await page.keyboard.type(password, { delay: 10 });
+    await page.keyboard.type(password, { delay: 12 });
     await page.click('input[type="submit"], #idSIButton9');
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 700));
     const stayBtn = await page.$('#idSIButton9');
     if (stayBtn) await stayBtn.click();
-    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => {});
+    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 12000 }).catch(() => {});
   } else {
     state.step = 'Typing username & password';
     console.log('[STEP]', state.step);
-    await page.waitForSelector('input[type="password"]', { timeout: 10000 });
+    await page.waitForSelector('input[type="password"]', { timeout: 12000 });
+    await new Promise(r => setTimeout(r, 300));
     await dismissCookies(page);
-    await new Promise(r => setTimeout(r, 300));
-    const filled = await page.evaluate((user, pass) => {
-      const passInput = document.querySelector("input[type=password]");
-      if (!passInput) return false;
-      const allInputs = Array.from(document.querySelectorAll("input:not([type=hidden])"));
-      const passIdx = allInputs.indexOf(passInput);
-      const userInput = passIdx > 0 ? allInputs.at(passIdx - 1) : null;
-      if (!userInput) return false;
 
-      const setReactVal = (el, val) => {
-        el.focus();
-        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-        setter.call(el, val);
-        el.dispatchEvent(new Event("input", { bubbles: true }));
-        el.dispatchEvent(new Event("change", { bubbles: true }));
+    // Find exact coordinates of Username (visible text input above password) & Password input
+    const coords = await page.evaluate(() => {
+      const passEl = document.querySelector('input[type="password"]');
+      if (!passEl) return null;
+      const visibleInputs = Array.from(document.querySelectorAll('input:not([type="hidden"])')).filter(el => {
+        const r = el.getBoundingClientRect();
+        return r.width > 50 && r.height > 15;
+      });
+      const passIdx = visibleInputs.indexOf(passEl);
+      const userEl = passIdx > 0 ? visibleInputs.at(passIdx - 1) : visibleInputs.at(0);
+      if (!userEl) return null;
+      const ur = userEl.getBoundingClientRect();
+      const pr = passEl.getBoundingClientRect();
+      return {
+        ux: ur.left + ur.width / 2,
+        uy: ur.top + ur.height / 2,
+        px: pr.left + pr.width / 2,
+        py: pr.top + pr.height / 2
       };
-
-      setReactVal(userInput, user);
-      setReactVal(passInput, pass);
-      return true;
-    }, username, password);
-
-    await new Promise(r => setTimeout(r, 300));
-    const clickedLogin = await scanAndClick(page, (el) => {
-      if (el.tagName !== "BUTTON" && el.type !== "submit") return false;
-      const t = (el.innerText || el.value || "").trim().toLowerCase();
-      return t === "log in" || t === "login" || t === "sign in";
     });
-    if (!clickedLogin) await page.keyboard.press("Enter");
-    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => {});
-  }
 
-  state.step = "Loading Homework dashboard";
-  console.log("[STEP]", state.step);
-  for (let i = 0; i < 10; i++) {
-    await new Promise(r => setTimeout(r, 700));
-    const ready = await page.evaluate(() => document.body && /Homework|Compulsory|XP Boost|Target/i.test(document.body.innerText)).catch(() => false);
-    if (ready) break;
-  }
-  await dismissCookies(page).catch(() => {});
+    if (coords) {
+      await realMouseClick(page, coords.ux, coords.uy);
+      await new Promise(r => setTimeout(r, 120));
+      await page.keyboard.type(username, { delay: 18 });
 
-  await page.waitForNavigation({ waitUntil: "networkidle2", timeout: 5000 }).catch(() => {});
-  let freshCookies = [];
-  for (let i = 0; i < 4; i++) {
-    try {
-      freshCookies = await page.cookies();
-      break;
-    } catch (e) {
-      await new Promise(r => setTimeout(r, 500));
+      await realMouseClick(page, coords.px, coords.py);
+      await new Promise(r => setTimeout(r, 120));
+      await page.keyboard.type(password, { delay: 18 });
     }
-  }
-  if (freshCookies.length > 0) cookieJar.set(cacheKey, freshCookies);
-  console.log('[STEP] Login finished!');
-}
 
+    await new Promise(r => setTimeout(r, 250));
+    const clickedLogin = await scanAndClick(page, (el) => {
+      if (el.tagName !== 'BUTTON' && el.type !== 'submit') return false;
+      const t = (el.innerText || el.value || '').trim().toLowerCase();
+      return t === 'log in' || t === 'login' || t === 'sign in';
+    });
+if (!clickedLogin) await page.keyboard.press('Enter');
+await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 12000 }).catch(() => {});
+}
+state.step = 'Loading Homework dashboard';
+console.log('[STEP]', state.step);
+for (let i = 0; i < 10; i++) {
+await new Promise(r => setTimeout(r, 700));
+const ready = await page.evaluate(() => {
+const t = document.body ? document.body.innerText : '';
+return !t.includes('Use your Sparx login') && /Homework|Compulsory|XP Boost|Target/i.test(t);
+}).catch(() => false);
+if (ready) break;
+}
+await dismissCookies(page);
+const stillOnLogin = await page.evaluate(() => {
+const t = document.body ? document.body.innerText : '';
+if (/incorrect|invalid|wrong|try again/i.test(t)) return 'Sparx said: Incorrect username or password!';
+if (t.includes('Log in to Sparx using Microsoft') || t.includes('Use your Sparx login')) return 'Login did not complete — check your Username/Password or try Microsoft Login!';
+return null;
+}).catch(() => null);
+if (stillOnLogin) throw new Error(stillOnLogin);
+let freshCookies = [];
+for (let i = 0; i < 4; i++) {
+try {
+freshCookies = await page.cookies();
+break;
+} catch (e) {
+await new Promise(r => setTimeout(r, 500));
+}
+}
+if (freshCookies.length > 0) cookieJar.set(cacheKey, freshCookies);
+console.log('[STEP] Login finished!');
+}
 async function loginToSparx(page, school, username, password, isMicrosoft) {
-  const state = { step: 'Launching Chrome' };
-  let timer;
-  const timeoutPromise = new Promise((_, reject) => {
-    timer = setTimeout(async () => {
-      const pageScan = await page.evaluate(() => (document.body ? document.body.innerText.slice(0, 160).replace(/\s+/g, ' ') : 'Empty')).catch(() => 'Unreadable');
-      const err = new Error('Timed out after 30s at step: `' + state.step + '`\nPage scan: `' + pageScan + '`');
+const state = { step: 'Launching Chrome' };
+let timer;
+const timeoutPromise = new Promise((_, reject) => {
+timer = setTimeout(async () => {
+const pageScan = await page.evaluate(() => (document.body ? document.body.innerText.slice(0, 160).replace(/\s+/g, ' ') : 'Empty')).catch(() => 'Unreadable');
+const err = new Error('Timed out after 35s at step: ' + state.step + '\nPage scan: ' + pageScan + '');
 err.screenshot = await page.screenshot({ fullPage: false }).catch(() => null);
 reject(err);
-}, 30000);
+}, 35000);
 });
 try {
 await Promise.race([
@@ -296,7 +318,7 @@ await scanAndClick(page, (el, hwTitle) => {
 const t = (el.innerText || '').trim();
 return t.includes(hwTitle) && t.length < 150;
 }, targetHw.title);
-await new Promise(r => setTimeout(r, 700));
+await new Promise(r => setTimeout(r, 800));
 await scanAndClick(page, (el) => {
 const t = (el.innerText || '').trim();
 return (t.includes('1A') || t.includes('Task 1') || el.getAttribute('href')?.includes('/task/')) && t.length < 100;
@@ -309,12 +331,12 @@ const qCode = '1' + String.fromCharCode(65 + i);
 await dmMsg.edit(
 buildProgressPayload(session, targetHw.title, 'Solving ' + qCode + ' in Task 1...', tasks)
 );
-const isBookwork = await page.evaluate(() => document.body.innerText.includes('Bookwork check'));
+const isBookwork = await page.evaluate(() => document.body.innerText.includes('Bookwork check')).catch(() => false);
 if (isBookwork) {
 const codeNeeded = await page.evaluate(() => {
 const m = document.body.innerText.match(/Bookwork code:\s*([A-Z0-9]+)/i);
 return m ? m.at(1) : null;
-});
+}).catch(() => null);
 if (codeNeeded && bookworkLog[codeNeeded]) {
 await scanAndClick(page, (el, ans) => el.tagName === 'BUTTON' && (el.innerText || '').includes(ans), bookworkLog[codeNeeded]);
 await new Promise(r => setTimeout(r, 800));
@@ -325,17 +347,24 @@ const shot = await page.screenshot({ encoding: 'base64' });
 const currentCode = await page.evaluate(() => {
 const m = document.body.innerText.match(/Bookwork code:\s*([A-Z0-9]+)/i);
 return m ? m.at(1) : null;
-});
+}).catch(() => null);
 const res = await groq.chat.completions.create({
 model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-messages: [{
+messages: [
+{
+role: 'system',
+content: 'You are an expert UK GCSE & KS3 Maths solver for Sparx Maths. Carefully read all numbers, diagrams, axes, units, and rounding instructions in the screenshot. Solve step-by-step internally, then output ONLY the exact final value or exact multiple-choice button label to enter—never include working, units unless asked, or extra words.'
+},
+{
 role: 'user',
 content: [
-{ type: 'text', text: 'Solve this Sparx Maths question. Reply with ONLY the exact final number, expression, or option text to type into the answer box. No explanations.' },
+{ type: 'text', text: 'Solve this Sparx Maths question accurately. Output ONLY the exact answer to enter or click.' },
 { type: 'image_url', image_url: { url: 'data:image/png;base64,' + shot } }
 ]
-}],
-max_tokens: 100
+}
+],
+temperature: 0.1,
+max_tokens: 120
 });
 const answer = res.choices.at(0).message.content.trim();
 if (currentCode) bookworkLog[currentCode] = answer;
