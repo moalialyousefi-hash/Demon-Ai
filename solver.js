@@ -390,7 +390,9 @@ let res;
 const answer = res.choices.at(0).message.content.trim();
 if (currentCode) bookworkLog[currentCode] = answer;
 await new Promise(r => setTimeout(r, delayMs));
-const inputSel = 'input[type="text"], input[type="number"]';
+await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
+      await new Promise(r => setTimeout(r, 600));
+      const inputSel = 'input[type="text"], input[type="number"]';
 const inputEl = await page.$(inputSel);
 if (inputEl) {
 const box = await inputEl.boundingBox();
