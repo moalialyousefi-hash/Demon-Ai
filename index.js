@@ -206,18 +206,39 @@ client.on('interactionCreate', async (interaction) => {
         await new Promise(r => setTimeout(r, 1000));
         await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 4000 }).catch(() => {});
         const scraped = await page.evaluate(() => {
-const h = document.querySelector('h1, h2');
-const name = (h && h.innerText.includes('Hey ')) ? h.innerText.replace('Hey ', '').replace(',', '').trim() : 'Student';
-const lines = document.body.innerText.split('\n').map(l => l.trim()).filter(Boolean);
-const homeworks = [];
-for (let i = 0; i < lines.length; i++) {
-if (lines[i].startsWith('Homework due ')) {
-const nearby = lines.slice(i, i + 4).join(' ');
-homeworks.push({ id: 'hw_' + homeworks.length, title: lines[i], completed: nearby.includes('Completed') });
-}
-}
-return { name, homeworks };
-});
+          const text = document.body ? document.body.innerText : "";
+          const nameMatch = text.match(/Hey\s+([A-Za-z0-9_-]+)/i);
+          const name = nameMatch ? nameMatch.at(1) : "Student";
+          const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+          const homeworks = [];
+          const seen = new Set();
+
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines.at(i);
+            const isHwHeader =
+              /^Homework due/i.test(line) ||
+              /^(Compulsory|XP Boost|Target|Independent Learning)/i.test(line) ||
+              (/^Due\s+/i.test(line) && line.length < 45);
+
+            if (isHwHeader) {
+              const prevLine = i > 0 ? lines.at(i - 1) : "";
+              const nextLine = i + 1 < lines.length ? lines.at(i + 1) : "";
+              let title = line;
+              if (/^Due\s+/i.test(line) && prevLine && prevLine.length > 2 && prevLine.length < 50) {
+                title = prevLine + " (" + line + ")";
+              } else if (/^(Compulsory|XP Boost|Target)$/i.test(line) && nextLine && /Due/i.test(nextLine)) {
+                title = line + " — " + nextLine;
+              }
+              if (!seen.has(title) && title.length >= 4) {
+                seen.add(title);
+                const nearby = lines.slice(Math.max(0, i - 1), i + 5).join(" ");
+                const isDone = /100%|Completed/i.test(nearby);
+                homeworks.push({ id: "hw_" + homeworks.length, title: title.slice(0, 95), completed: isDone });
+              }
+            }
+          }
+          return { name, homeworks };
+        });
 const firstIncomplete = scraped.homeworks.find(h => !h.completed);
 const session = {
 school, username, password, isMicrosoft,
