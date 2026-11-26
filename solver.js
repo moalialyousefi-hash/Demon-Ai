@@ -117,32 +117,40 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
 
   const savedCookies = cookieJar.get(cacheKey);
   if (savedCookies && savedCookies.length > 0) {
-    state.step = 'Restoring saved session';
-    console.log('[STEP]', state.step);
+    state.step = "Restoring saved session";
+    console.log("[STEP]", state.step);
     await page.setCookie(...savedCookies).catch(() => {});
-    await page.goto('https://sparxmaths.uk', { waitUntil: 'domcontentloaded', timeout: 15000 });
-    await new Promise(r => setTimeout(r, 1200));
-    const isLoggedIn = await page.evaluate(() => {
-      const t = document.body ? document.body.innerText : '';
-      return !t.includes('Use your Sparx login') && /Homework|Compulsory|XP Boost|Target/i.test(t);
-    }).catch(() => false);
-    if (isLoggedIn) {
-      await dismissCookies(page);
-      console.log('[STEP] Restored session!');
-      return;
+    await page.goto("https://sparxmaths.uk", { waitUntil: "domcontentloaded", timeout: 15000 });
+    for (let i = 0; i < 6; i++) {
+      await new Promise(r => setTimeout(r, 600));
+      const isLoggedIn = await page.evaluate(() => {
+        const t = document.body ? document.body.innerText : "";
+        return !t.includes("Use your Sparx login") && /Hey\s+|Homework due|Personal Practice/i.test(t);
+      }).catch(() => false);
+      if (isLoggedIn) {
+        await dismissCookies(page);
+        console.log("[STEP] Restored session!");
+        return;
+      }
     }
     cookieJar.delete(cacheKey);
   }
 
-  state.step = 'Opening Sparx student login';
-  console.log('[STEP]', state.step);
-  await page.goto('https://sparxmaths.uk', { waitUntil: 'domcontentloaded', timeout: 20000 });
-  await new Promise(r => setTimeout(r, 600));
+  state.step = "Opening Sparx student login";
+  console.log("[STEP]", state.step);
+  await page.goto("https://sparxmaths.uk", { waitUntil: "domcontentloaded", timeout: 20000 });
+  await new Promise(r => setTimeout(r, 800));
   await dismissCookies(page);
 
-  state.step = 'Typing school name';
-  console.log('[STEP]', state.step);
-  await page.waitForSelector('input', { timeout: 12000 });
+  const alreadyIn = await page.evaluate(() => {
+    const t = document.body ? document.body.innerText : "";
+    return !t.includes("Use your Sparx login") && /Hey\s+|Homework due|Personal Practice/i.test(t);
+  }).catch(() => false);
+  if (alreadyIn) return;
+
+  state.step = "Typing school name";
+  console.log("[STEP]", state.step);
+  await page.waitForSelector("input", { timeout: 12000 });
   await scanAndClick(page, (el) => el.tagName === 'INPUT' && el.type !== 'hidden');
   await page.keyboard.type(school, { delay: 12 });
   await new Promise(r => setTimeout(r, 600));
