@@ -209,54 +209,29 @@ client.on('interactionCreate', async (interaction) => {
           await new Promise(r => setTimeout(r, 700));
           try {
             scraped = await page.evaluate(() => {
-          const text = document.body ? document.body.innerText : "";
-          console.log("[SPARX URL]", window.location.href);
-          const nameMatch = text.match(/Hey\s+([A-Za-z0-9_-]+)/i);
-          const name = nameMatch ? nameMatch.at(1) : "Student";
-          const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
-          const homeworks = [];
-          const seen = new Set();
+              const text = document.body ? document.body.innerText : "";
+              const nameMatch = text.match(/Hey\s+([A-Za-z0-9_-]+)/i);
+              const name = nameMatch ? nameMatch.at(1) : "Student";
+              const rawLines = text.split("\n").map(l => l.trim()).filter(Boolean);
+              const homeworks = [];
+              const seen = new Set();
 
-          for (let i = 0; i < lines.length; i++) {
-            const line = lines.at(i);
-            const isHwHeader =
-              /^Homework due/i.test(line) ||
-              /^(Compulsory|XP Boost|Target|Independent Learning)/i.test(line) ||
-              (/^Due\s+/i.test(line) && line.length < 45);
+              for (let i = 0; i < rawLines.length; i++) {
+                const line = rawLines.at(i);
+                if (/^Independent Learning$/i.test(line) || /^Personal Practice$/i.test(line)) continue;
 
-            if (isHwHeader) {
-              const prevLine = i > 0 ? lines.at(i - 1) : "";
-              const nextLine = i + 1 < lines.length ? lines.at(i + 1) : "";
-              let title = line;
-              if (/^Due\s+/i.test(line) && prevLine && prevLine.length > 2 && prevLine.length < 50) {
-                title = prevLine + " (" + line + ")";
-              } else if (/^(Compulsory|XP Boost|Target)$/i.test(line) && nextLine && /Due/i.test(nextLine)) {
-                title = line + " — " + nextLine;
-              }
-              if (!seen.has(title) && title.length >= 4) {
-                seen.add(title);
-                const nearby = lines.slice(Math.max(0, i - 1), i + 5).join(" ");
-                const isDone = /100%|Completed/i.test(nearby);
-                homeworks.push({ id: "hw_" + homeworks.length, title: title.slice(0, 95), completed: isDone });
-              }
-            }
-          }
-          if (homeworks.length === 0) {
-            Array.from(document.querySelectorAll("a[href*='homework'], a[href*='task'], a[href*='package'], button, [role='button']"))
-              .map(el => (el.innerText || "").trim().replace(/\s+/g, " "))
-              .filter(t => t.length >= 4 && t.length <= 80 && !/^(Log out|Help|Settings|Home|Menu)$/i.test(t))
-              .slice(0, 15)
-              .forEach(t => {
-                if (!seen.has(t)) {
-                  seen.add(t);
-                  homeworks.push({ id: "hw_" + homeworks.length, title: t, completed: /100%|Completed/i.test(t) });
+                if (/^Homework due/i.test(line)) {
+                  if (!seen.has(line)) {
+                    seen.add(line);
+                    const nearby = rawLines.slice(i, i + 4).join(" ");
+                    const isDone = /100%|Completed/i.test(nearby);
+                    homeworks.push({ id: "hw_" + homeworks.length, title: line.slice(0, 95), completed: isDone });
+                  }
                 }
-              });
-          }
-          return { name, homeworks, debugText: text.slice(0, 400).replace(/\s+/g, " ") };
+              }
+              return { name, homeworks };
             });
-            console.log("[DASHBOARD SCAN]", scraped.debugText);
-            if (scraped.homeworks.length > 0 || scraped.name !== "Student") break;
+            if (scraped.homeworks.length > 0) break;
           } catch (e) {}
         }
 const firstIncomplete = scraped.homeworks.find(h => !h.completed);
