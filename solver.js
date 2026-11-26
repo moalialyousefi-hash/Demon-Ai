@@ -62,9 +62,13 @@ function buildProgressPayload(session, taskTitle, statusText, tasks, extraFiles 
 
 async function dismissCookies(page) {
   await page.evaluate(() => {
-    const btns = Array.from(document.querySelectorAll('button'));
-    const accept = btns.find(b => b.innerText && b.innerText.trim().toUpperCase().includes('ACCEPT'));
-    if (accept) accept.click();
+    const words = ["accept all", "accept cookies", "accept", "allow all", "i agree"];
+    const btns = Array.from(document.querySelectorAll("button, a, [role=button]"));
+    const match = btns.find(b => b.innerText && words.some(w => b.innerText.trim().toLowerCase().includes(w)));
+    if (match) match.click();
+    document.querySelectorAll("[id*=cookie i], [class*=cookie i], [id*=consent i], [class*=consent i]").forEach(el => {
+      if (el.offsetHeight > 40 && el.innerText && el.innerText.toLowerCase().includes("cookie")) el.remove();
+    });
   }).catch(() => {});
 }
 
