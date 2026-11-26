@@ -392,6 +392,8 @@ if (currentCode) bookworkLog[currentCode] = answer;
 await new Promise(r => setTimeout(r, delayMs));
 await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
       await new Promise(r => setTimeout(r, 600));
+      await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
+      await new Promise(r => setTimeout(r, 600));
       const inputSel = 'input[type="text"], input[type="number"]';
 const inputEl = await page.$(inputSel);
 if (inputEl) {
