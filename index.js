@@ -196,9 +196,9 @@ client.on('interactionCreate', async (interaction) => {
           interaction.editReply('Logging into Sparx Maths (' + seconds + 's elapsed)...').catch(() => {});
         }, 5000);
 
-        console.log("[M3] getFastBrowser start"); browser = await getFastBrowser(); console.log("[M4] getFastBrowser done");
+        console.log("[M3] getFastBrowser start"); console.log("[M3] browser"); browser = await getFastBrowser(); console.log("[M4] page"); console.log("[M4] getFastBrowser done");
         page = await browser.newPage();
-        console.log("[M5] loginToSparx start"); await loginToSparx(page, school, username, password, isMicrosoft); console.log("[M6] loginToSparx done");
+        console.log("[M5] loginToSparx start"); console.log("[M5] login"); await loginToSparx(page, school, username, password, isMicrosoft); console.log("[M6] loginToSparx done");
 
         clearInterval(statusTicker);
         await interaction.editReply('Step 3/3: Reading your homework list...');
