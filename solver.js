@@ -64,7 +64,7 @@ async function dismissCookies(page) {
   }).catch(() => {});
 }
 
-async function loginToSparxCore(page, school, username, password, isMicrosoft) {
+async function loginToSparxCore(page, school, username, password, isMicrosoft, state) {
   let blockAssets = true;
   await page.setViewport({ width: 1280, height: 800 });
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36');
@@ -78,15 +78,18 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft) {
     }
   });
 
+  state.step = "Opening Sparx";
   await page.goto('https://sparxmaths.uk', { waitUntil: 'domcontentloaded', timeout: 20000 });
   await new Promise(r => setTimeout(r, 600));
   await dismissCookies(page);
 
+  state.step = "Waiting for school input";
   await page.waitForSelector('input', { timeout: 12000 });
   await page.evaluate(() => {
     const inp = document.querySelector('input');
     if (inp) inp.focus();
   });
+  state.step = "Typing school name";
   await page.keyboard.type(school, { delay: 10 });
   await new Promise(r => setTimeout(r, 600));
 
@@ -115,6 +118,7 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft) {
   await new Promise(r => setTimeout(r, 700));
   await dismissCookies(page);
 
+  state.step = "Submitting school";
   if (isMicrosoft) {
     await page.evaluate(() => {
       const buttons = Array.from(document.querySelectorAll('button, a'));
@@ -133,6 +137,7 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft) {
     if (stayBtn) await stayBtn.click();
     await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 12000 }).catch(() => {});
   } else {
+    state.step = "Waiting for password box";
     await page.waitForSelector('input[type="password"]', { timeout: 12000 });
     await dismissCookies(page);
     const inputs = await page.$$('input:not([type="hidden"])');
@@ -143,16 +148,18 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft) {
   }
 
   blockAssets = false;
+  state.step = "Waiting for Homework dashboard";
   await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 10000 }).catch(() => {});
   await dismissCookies(page);
 }
 
 async function loginToSparx(page, school, username, password, isMicrosoft) {
+  const state = { step: "Launching Chrome" };
   const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('Login timed out after 35s — Render server may be busy, please try again.')), 35000)
+    setTimeout(() => reject(new Error("Timed out at step: " + state.step)), 50000)
   );
   await Promise.race([
-    loginToSparxCore(page, school, username, password, isMicrosoft),
+    loginToSparxCore(page, school, username, password, isMicrosoft, state),
     timeoutPromise
   ]);
 }
