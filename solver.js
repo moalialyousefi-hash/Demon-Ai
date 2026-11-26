@@ -174,14 +174,28 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
 }
 
 async function loginToSparx(page, school, username, password, isMicrosoft) {
-  const state = { step: 'Launching Chrome' };
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('Timed out at step: ' + state.step)), 35000)
-  );
-  await Promise.race([
-    loginToSparxCore(page, school, username, password, isMicrosoft, state),
-    timeoutPromise
-  ]);
+  const state = { step: "Launching Chrome" };
+  let timer;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(async () => {
+      const err = new Error("Timed out after 45s at step: " + state.step);
+      err.screenshot = await page.screenshot({ fullPage: false }).catch(() => null);
+      reject(err);
+    }, 45000);
+  });
+  try {
+    await Promise.race([
+      loginToSparxCore(page, school, username, password, isMicrosoft, state),
+      timeoutPromise
+    ]);
+  } catch (err) {
+    if (!err.screenshot) {
+      err.screenshot = await page.screenshot({ fullPage: false }).catch(() => null);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function runHomeworkInDM(user, session, targetHw) {
