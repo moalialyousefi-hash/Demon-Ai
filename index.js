@@ -84,17 +84,17 @@ client.on('interactionCreate', async (interaction) => {
         .setDescription(
           'Choose your login method below to open your Sparx Maths dashboard.\n\n' +
           '• **▶ Sparx Login** — For standard Sparx username & password\n' +
-          '• **🪟 Microsoft Login** — For school Microsoft 365 email & password\n' +
+          '• **<:microsoft:1525932056025235496> Microsoft Login** — For school Microsoft 365 email & password\n' +
           '• **Live DM Progress** — Sends task progress bars directly to your DMs'
         )
         .setFooter({ text: 'Demon AI • Automated Homework Assistant', iconURL: client.user.displayAvatarURL() })
         .setColor('#1DB954');
 
       const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('open_sparx_modal').setLabel('▶ Sparx Login').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('open_ms_modal').setLabel('🪟 Microsoft Login').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('saved_account_btn').setLabel('Saved Account').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('help_btn').setLabel('Help').setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId('open_sparx_modal').setLabel('Sparx Login').setEmoji('▶').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('open_ms_modal').setLabel('Microsoft Login').setEmoji('1525932056025235496').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('saved_account_btn').setLabel('Saved Account').setEmoji('💾').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('help_btn').setLabel('Help').setEmoji('❓').setStyle(ButtonStyle.Secondary)
       );
 
       return await interaction.reply({ embeds: [embed], components: [row] });
@@ -124,11 +124,21 @@ client.on('interactionCreate', async (interaction) => {
 
       if (interaction.customId === 'saved_account_btn') {
         const saved = savedAccounts.get(interaction.user.id);
-        return await interaction.reply({ content: saved ? 'Saved login: **' + saved.school + '** (' + saved.username + ')' : 'No saved login yet.', ephemeral: true });
+        return await interaction.reply({ content: saved ? 'Saved login: **' + saved.school + '** (' + saved.username + ')' : 'No saved login yet.', flags: 64 });
       }
 
       if (interaction.customId === 'help_btn') {
-        return await interaction.reply({ content: '1. Click **▶ Sparx Login** or **🪟 Microsoft Login**.\n2. Pick a homework and click **▶ Start Selected**.\n3. Check your **Direct Messages** for live progress bars!', ephemeral: true });
+        const helpEmbed = new EmbedBuilder()
+          .setTitle('Demon AI • Help & Guide')
+          .setThumbnail(client.user.displayAvatarURL())
+          .setDescription(
+            '**1. Sign In**\nClick **▶ Sparx Login** (standard login) or **<:microsoft:1525932056025235496> Microsoft Login** (Microsoft 365) and enter your school details.\n\n' +
+            '**2. Choose Homework & Speed**\nPick your due homework from the dropdown, select **Quick**, **Normal**, or **Human** speed, and click **▶ Start Selected**.\n\n' +
+            '**3. Live DM Progress**\nKeep your **Direct Messages** open so Demon AI can send live task progress bars as it solves each question.'
+          )
+          .setFooter({ text: 'Demon AI • Sparx Maths Assistant' })
+          .setColor('#1DB954');
+        return await interaction.reply({ embeds: [helpEmbed], flags: 64 });
       }
 
       if (interaction.customId === 'toggle_completed_btn') {
@@ -232,31 +242,6 @@ client.on('interactionCreate', async (interaction) => {
               return { name, homeworks };
             });
             if (scraped.homeworks.length > 0) break;
-          } catch (e) {}
-        }
-const firstIncomplete = scraped.homeworks.find(h => !h.completed);
-const session = {
-school, username, password, isMicrosoft,
-studentName: scraped.name,
-homeworks: scraped.homeworks,
-selectedHwId: firstIncomplete ? firstIncomplete.id : null,
-showCompleted: !firstIncomplete,
-speed: 'quick'
-};
-userSessions.set(interaction.user.id, session);
-await interaction.editReply(buildSparxDashboard(session));
-} catch (err) {
-clearInterval(statusTicker);
-console.error('[LOGIN ERROR]', err);
-const files = err.screenshot ? [new AttachmentBuilder(Buffer.from(err.screenshot), { name: 'login_stuck.png' })] : [];
-await interaction.editReply({ content: 'Stopped early: ' + err.message, files });
-} finally {
-clearInterval(statusTicker);
-if (page) await page.close().catch(() => {});
-if (browser) await (browser.disconnect ? browser.disconnect() : browser.close()).catch(() => {});
-}
-}
-} catch (err) {
 console.error('[INTERACTION ERROR]', err);
 }
 });
