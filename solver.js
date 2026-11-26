@@ -222,10 +222,13 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => {});
   }
 
-  state.step = 'Loading Homework dashboard';
-  console.log('[STEP]', state.step);
-  await new Promise(r => setTimeout(r, 1500));
-  await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 6000 }).catch(() => {});
+  state.step = "Loading Homework dashboard";
+  console.log("[STEP]", state.step);
+  for (let i = 0; i < 10; i++) {
+    await new Promise(r => setTimeout(r, 800));
+    const ready = await page.evaluate(() => document.body && /Homework|Compulsory|XP Boost|Target/i.test(document.body.innerText)).catch(() => false);
+    if (ready) break;
+  }
   await dismissCookies(page).catch(() => {});
 
   const freshCookies = await page.cookies().catch(() => []);
