@@ -12,20 +12,15 @@ const groq = new OpenAI({
 const cookieJar = new Map();
 
 async function getFastBrowser() {
+  if (process.env.BROWSERLESS_TOKEN) {
+    return await puppeteer.connect({
+      browserWSEndpoint: "wss://chrome.browserless.io?token=" + process.env.BROWSERLESS_TOKEN.trim()
+    });
+  }
   return await puppeteer.launch({
     headless: true,
     protocolTimeout: 45000,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--no-zygote',
-      '--disable-extensions',
-      '--disable-background-networking',
-      '--renderer-process-limit=1',
-      '--js-flags=--max-old-space-size=256'
-    ]
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--no-zygote"]
   });
 }
 
@@ -321,7 +316,7 @@ buildProgressPayload(session, targetHw.title, 'Stopped: ' + err.message, tasks, 
 );
 } finally {
 if (page) await page.close().catch(() => {});
-if (browser) await browser.close().catch(() => {});
+if (browser) await (browser.disconnect ? browser.disconnect() : browser.close()).catch(() => {});
 }
 }
 module.exports = { loginToSparx, runHomeworkInDM, getFastBrowser };

@@ -198,7 +198,7 @@ console.error('[LOGIN ERROR]', err);
 await interaction.editReply('Stopped early: ' + err.message);
 } finally {
 if (page) await page.close().catch(() => {});
-if (browser) await browser.close().catch(() => {});
+if (browser) await (browser.disconnect ? browser.disconnect() : browser.close()).catch(() => {});
 }
 }
 } catch (err) {
