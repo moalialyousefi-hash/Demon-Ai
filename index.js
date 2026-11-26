@@ -169,9 +169,9 @@ browser = await getFastBrowser();
 page = await browser.newPage();
 await loginToSparx(page, school, username, password, isMicrosoft);
 let scraped = null;
-for (let attempt = 0; attempt < 4; attempt++) {
+for (let attempt = 0; attempt < 2; attempt++) {
 try {
-await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 5000 }).catch(() => {});
+await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 1500 }).catch(() => {});
 scraped = await page.evaluate(() => {
 const h = document.querySelector('h1, h2');
 const name = (h && h.innerText.includes('Hey ')) ? h.innerText.replace('Hey ', '').replace(',', '').trim() : 'Student';
@@ -187,7 +187,7 @@ return { name, homeworks };
 });
 if (scraped) break;
 } catch (e) {
-await new Promise(r => setTimeout(r, 1000));
+await new Promise(r => setTimeout(r, 400));
 }
 }
 if (!scraped) throw new Error('Page redirected too many times. Please try logging in again.');
