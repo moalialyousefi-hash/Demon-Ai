@@ -348,24 +348,29 @@ const currentCode = await page.evaluate(() => {
 const m = document.body.innerText.match(/Bookwork code:\s*([A-Z0-9]+)/i);
 return m ? m.at(1) : null;
 }).catch(() => null);
-const res = await groq.chat.completions.create({
-model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-messages: [
-{
-role: 'system',
-content: 'You are an expert UK GCSE & KS3 Maths solver for Sparx Maths. Carefully read all numbers, diagrams, axes, units, and rounding instructions in the screenshot. Solve step-by-step internally, then output ONLY the exact final value or exact multiple-choice button label to enter—never include working, units unless asked, or extra words.'
-},
-{
-role: 'user',
-content: [
-{ type: 'text', text: 'Solve this Sparx Maths question accurately. Output ONLY the exact answer to enter or click.' },
-{ type: 'image_url', image_url: { url: 'data:image/png;base64,' + shot } }
-]
-}
-],
-temperature: 0.1,
-max_tokens: 120
-});
+let res;
+      try {
+        res = await groq.chat.completions.create({
+          model: "meta-llama/llama-4-maverick-17b-128e-instruct",
+          messages: [
+            {
+              role: "system",
+              content: "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths. Carefully read all numbers, diagrams, axes, units, and rounding instructions in the screenshot. Solve step-by-step internally, then output ONLY the exact final value or exact multiple-choice button label to enter—never include working or extra words."
+            },
+            {
+              role: "user",
+              content: [
+                { type: "text", text: "Solve this Sparx Maths question accurately. Output ONLY the exact answer to enter or click." },
+                { type: "image_url", image_url: { url: "data:image/png;base64," + shot } }
+              ]
+            }
+          ],
+          temperature: 0.1,
+          max_tokens: 120
+        });
+      } catch (apiErr) {
+        throw new Error("Groq AI (" + (apiErr.status || "ERR") + "): " + apiErr.message);
+      }
 const answer = res.choices.at(0).message.content.trim();
 if (currentCode) bookworkLog[currentCode] = answer;
 await new Promise(r => setTimeout(r, delayMs));
