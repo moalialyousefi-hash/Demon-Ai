@@ -231,7 +231,16 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
   }
   await dismissCookies(page).catch(() => {});
 
-  const freshCookies = await page.cookies().catch(() => []);
+  await page.waitForNavigation({ waitUntil: "networkidle2", timeout: 5000 }).catch(() => {});
+  let freshCookies = [];
+  for (let i = 0; i < 4; i++) {
+    try {
+      freshCookies = await page.cookies();
+      break;
+    } catch (e) {
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
   if (freshCookies.length > 0) cookieJar.set(cacheKey, freshCookies);
   console.log('[STEP] Login finished!');
 }
