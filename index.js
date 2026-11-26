@@ -210,6 +210,7 @@ client.on('interactionCreate', async (interaction) => {
           try {
             scraped = await page.evaluate(() => {
           const text = document.body ? document.body.innerText : "";
+          console.log("[SPARX URL]", window.location.href);
           const nameMatch = text.match(/Hey\s+([A-Za-z0-9_-]+)/i);
           const name = nameMatch ? nameMatch.at(1) : "Student";
           const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
@@ -240,8 +241,21 @@ client.on('interactionCreate', async (interaction) => {
               }
             }
           }
-          return { name, homeworks };
+          if (homeworks.length === 0) {
+            Array.from(document.querySelectorAll("a[href*='homework'], a[href*='task'], a[href*='package'], button, [role='button']"))
+              .map(el => (el.innerText || "").trim().replace(/\s+/g, " "))
+              .filter(t => t.length >= 4 && t.length <= 80 && !/^(Log out|Help|Settings|Home|Menu)$/i.test(t))
+              .slice(0, 15)
+              .forEach(t => {
+                if (!seen.has(t)) {
+                  seen.add(t);
+                  homeworks.push({ id: "hw_" + homeworks.length, title: t, completed: /100%|Completed/i.test(t) });
+                }
+              });
+          }
+          return { name, homeworks, debugText: text.slice(0, 400).replace(/\s+/g, " ") };
             });
+            console.log("[DASHBOARD SCAN]", scraped.debugText);
             if (scraped.homeworks.length > 0 || scraped.name !== "Student") break;
           } catch (e) {}
         }
