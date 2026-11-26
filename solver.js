@@ -195,13 +195,13 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
         .map(el => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width }; })
         .filter(b => b.w > 20);
     });
-    if (boxes[0]) {
-      await realMouseClick(page, boxes[0].x, boxes[0].y);
-      await page.keyboard.type(username, { delay: 10 });
-    }
-    if (boxes[1]) {
-      await realMouseClick(page, boxes[1].x, boxes[1].y);
-      await page.keyboard.type(password, { delay: 10 });
+    if (boxes.length >= 2) {
+      await realMouseClick(page, boxes.at(0).x, boxes.at(0).y);
+      await new Promise(r => setTimeout(r, 150));
+      await page.keyboard.type(username, { delay: 15 });
+      await realMouseClick(page, boxes.at(1).x, boxes.at(1).y);
+      await new Promise(r => setTimeout(r, 150));
+      await page.keyboard.type(password, { delay: 15 });
     }
     const clickedLogin = await scanAndClick(page, (el) => {
       if (el.tagName !== 'BUTTON' && el.type !== 'submit') return false;
