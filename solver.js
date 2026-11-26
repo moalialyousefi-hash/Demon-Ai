@@ -14,20 +14,55 @@ async function getFastBrowser() {
   if (process.env.BROWSERLESS_TOKEN) {
     const token = process.env.BROWSERLESS_TOKEN.trim();
     console.log("[STEP] Connecting to Browserless...");
-    const connectAny = Promise.any([
-      puppeteer.connect({ browserWSEndpoint: "wss://production-sfo.browserless.io?token=" + token }),
-      puppeteer.connect({ browserWSEndpoint: "wss://production-lon.browserless.io?token=" + token })
-    ]);
-    const timeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Browserless rejected token (check BROWSERLESS_TOKEN)")), 8000)
-    );
-    return await Promise.race([connectAny, timeout]);
+    try {
+      const connectAny = Promise.any([
+        puppeteer.connect({ browserWSEndpoint: "wss://production-sfo.browserless.io?token=" + token }),
+        puppeteer.connect({ browserWSEndpoint: "wss://production-lon.browserless.io?token=" + token }),
+        puppeteer.connect({ browserWSEndpoint: "wss://production-sfo.browserless.io/chromium?token=" + token })
+      ]);
+      const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Browserless 8s timeout")), 8000));
+      return await Promise.race([connectAny, timeout]);
+    } catch (e) {
+      console.log("[BROWSERLESS FALLBACK]", e.errors ? e.errors.map(x => x.message).join(" | ") : e.message);
+    }
   }
+  console.log("[STEP] Launching local Chrome...");
   return await puppeteer.launch({
     headless: true,
     protocolTimeout: 45000,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-zygote']
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--no-zygote"]
   });
+}
+
+// Move real mouse cursor smoothly to coordinates and click like a human
+async function realMouseClick(page, x, y) {
+  await page.mouse.move(x, y, { steps: 6 });
+  await new Promise(r => setTimeout(r, 80));
+  await page.mouse.down();
+  await new Promise(r => setTimeout(r, 40));
+  await page.mouse.up();
+}
+
+// Scan the visible page for a matching element and physically move & click it
+async function scanAndClick(page, matcherFn, arg = null) {
+  const box = await page.evaluate((fnStr, passedArg) => {
+    const fn = new Function('el', 'arg', 'return (' + fnStr + ')(el, arg);');
+    const candidates = Array.from(document.querySelectorAll('button, a, input, li, [role="option"], [role="button"], div, span'));
+    for (const el of candidates) {
+      const rect = el.getBoundingClientRect();
+      if (rect.width < 5 || rect.height < 5 || rect.bottom < 0 || rect.top > window.innerHeight) continue;
+      if (fn(el, passedArg)) {
+        return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      }
+    }
+    return null;
+  }, matcherFn.toString(), arg);
+
+  if (box) {
+    await realMouseClick(page, box.x, box.y);
+    return true;
+  }
+  return false;
 }
 
 function makeEmojiBar(done, total) {
@@ -61,13 +96,14 @@ function buildProgressPayload(session, taskTitle, statusText, tasks, extraFiles 
 }
 
 async function dismissCookies(page) {
+  await scanAndClick(page, (el) => {
+    if (!['BUTTON', 'A'].includes(el.tagName) && el.getAttribute('role') !== 'button') return false;
+    const t = (el.innerText || '').trim().toLowerCase();
+    return ['accept all', 'accept cookies', 'accept', 'allow all', 'i agree'].some(w => t.includes(w));
+  }).catch(() => {});
   await page.evaluate(() => {
-    const words = ["accept all", "accept cookies", "accept", "allow all", "i agree"];
-    const btns = Array.from(document.querySelectorAll("button, a, [role=button]"));
-    const match = btns.find(b => b.innerText && words.some(w => b.innerText.trim().toLowerCase().includes(w)));
-    if (match) match.click();
-    document.querySelectorAll("[id*=cookie i], [class*=cookie i], [id*=consent i], [class*=consent i]").forEach(el => {
-      if (el.offsetHeight > 40 && el.innerText && el.innerText.toLowerCase().includes("cookie")) el.remove();
+    document.querySelectorAll('[id*="cookie" i], [class*="cookie" i], [id*="consent" i], [class*="consent" i]').forEach(el => {
+      if (el.offsetHeight > 40 && el.innerText && el.innerText.toLowerCase().includes('cookie')) el.remove();
     });
   }).catch(() => {});
 }
@@ -97,73 +133,85 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
   state.step = 'Opening Sparx student login';
   console.log('[STEP]', state.step);
   await page.goto('https://sparxmaths.uk', { waitUntil: 'domcontentloaded', timeout: 20000 });
+  await new Promise(r => setTimeout(r, 600));
   await dismissCookies(page);
 
-  state.step = 'Typing school name';
+  state.step = 'Scanning & clicking school input';
   console.log('[STEP]', state.step);
   await page.waitForSelector('input', { timeout: 12000 });
-  await page.evaluate(() => {
-    const inp = document.querySelector('input');
-    if (inp) inp.focus();
-  });
-  await page.keyboard.type(school, { delay: 5 });
-  await new Promise(r => setTimeout(r, 400));
+  await scanAndClick(page, (el) => el.tagName === 'INPUT' && el.type !== 'hidden');
+  await page.keyboard.type(school, { delay: 15 });
+  await new Promise(r => setTimeout(r, 600));
 
-  await page.evaluate((schoolName) => {
-    const cleanQuery = schoolName.toLowerCase().replace(/\s+/g, '');
-    const items = Array.from(document.querySelectorAll('li, [role="option"], button, div'));
-    const match = items.find(el => {
-      if (!el.innerText || el.innerText.length > 150 || el.innerText.length < 4) return false;
-      const cleanText = el.innerText.toLowerCase().replace(/\s+/g, '');
-      return cleanText.includes(cleanQuery) && !el.querySelector('input');
-    });
-    if (match) match.click();
+  state.step = 'Scanning & clicking school dropdown';
+  console.log('[STEP]', state.step);
+  const clickedSchool = await scanAndClick(page, (el, schoolName) => {
+    if (el.tagName === 'INPUT' || el.querySelector('input')) return false;
+    const txt = (el.innerText || '').trim();
+    if (txt.length < 4 || txt.length > 140) return false;
+    return txt.toLowerCase().replace(/\s+/g, '').includes(schoolName.toLowerCase().replace(/\s+/g, ''));
   }, school);
 
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('Enter');
-  await new Promise(r => setTimeout(r, 200));
+  if (!clickedSchool) {
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+  }
+  await new Promise(r => setTimeout(r, 300));
 
-  await page.evaluate(() => {
-    const btns = Array.from(document.querySelectorAll('button'));
-    const contBtn = btns.find(b => b.innerText && b.innerText.trim().toLowerCase() === 'continue');
-    if (contBtn) contBtn.click();
+  await scanAndClick(page, (el) => {
+    if (el.tagName !== 'BUTTON' && el.getAttribute('role') !== 'button') return false;
+    return (el.innerText || '').trim().toLowerCase() === 'continue';
   });
 
+  await new Promise(r => setTimeout(r, 500));
   await dismissCookies(page);
 
   if (isMicrosoft) {
-    state.step = 'Microsoft sign-in';
+    state.step = 'Scanning & clicking Microsoft sign-in';
     console.log('[STEP]', state.step);
-    await page.evaluate(() => {
-      const buttons = Array.from(document.querySelectorAll('button, a'));
-      const msBtn = buttons.find(b => b.innerText && b.innerText.toLowerCase().includes('microsoft'));
-      if (msBtn) msBtn.click();
+    await scanAndClick(page, (el) => {
+      if (!['BUTTON', 'A'].includes(el.tagName) && el.getAttribute('role') !== 'button') return false;
+      return (el.innerText || '').toLowerCase().includes('microsoft');
     });
     await page.waitForSelector('input[type="email"], input[name="loginfmt"]', { timeout: 12000 });
-    await page.type('input[type="email"], input[name="loginfmt"]', username);
+    await scanAndClick(page, (el) => el.tagName === 'INPUT' && (el.type === 'email' || el.name === 'loginfmt'));
+    await page.keyboard.type(username, { delay: 15 });
     await page.click('input[type="submit"], #idSIButton9');
-    await new Promise(r => setTimeout(r, 600));
+    await new Promise(r => setTimeout(r, 700));
     await page.waitForSelector('input[type="password"], input[name="passwd"]', { timeout: 12000 });
-    await page.type('input[type="password"], input[name="passwd"]', password);
+    await scanAndClick(page, (el) => el.tagName === 'INPUT' && el.type === 'password');
+    await page.keyboard.type(password, { delay: 15 });
     await page.click('input[type="submit"], #idSIButton9');
-    await new Promise(r => setTimeout(r, 600));
+    await new Promise(r => setTimeout(r, 700));
     const stayBtn = await page.$('#idSIButton9');
     if (stayBtn) await stayBtn.click();
     await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 12000 }).catch(() => {});
   } else {
-    state.step = 'Entering username & password';
+    state.step = 'Scanning & typing username + password';
     console.log('[STEP]', state.step);
     await page.waitForSelector('input[type="password"]', { timeout: 12000 });
     await dismissCookies(page);
     const inputs = await page.$$('input:not([type="hidden"])');
-    if (inputs.at(0)) await inputs.at(0).type(username);
-    if (inputs.at(1)) await inputs.at(1).type(password);
-    await page.keyboard.press('Enter');
+    if (inputs.at(0)) {
+      const box0 = await inputs.at(0).boundingBox();
+      if (box0) await realMouseClick(page, box0.x + box0.width / 2, box0.y + box0.height / 2);
+      await page.keyboard.type(username, { delay: 15 });
+    }
+    if (inputs.at(1)) {
+      const box1 = await inputs.at(1).boundingBox();
+      if (box1) await realMouseClick(page, box1.x + box1.width / 2, box1.y + box1.height / 2);
+      await page.keyboard.type(password, { delay: 15 });
+    }
+    const clickedLogin = await scanAndClick(page, (el) => {
+      if (el.tagName !== 'BUTTON' && el.type !== 'submit') return false;
+      const t = (el.innerText || el.value || '').trim().toLowerCase();
+      return t === 'log in' || t === 'login' || t === 'sign in';
+    });
+    if (!clickedLogin) await page.keyboard.press('Enter');
     await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 12000 }).catch(() => {});
   }
 
-  state.step = 'Loading Homework dashboard';
+  state.step = 'Scanning Homework dashboard';
   console.log('[STEP]', state.step);
   await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 6000 }).catch(() => {});
   await dismissCookies(page);
@@ -174,95 +222,78 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
 }
 
 async function loginToSparx(page, school, username, password, isMicrosoft) {
-  const state = { step: "Launching Chrome" };
+  const state = { step: 'Launching Chrome' };
   let timer;
   const timeoutPromise = new Promise((_, reject) => {
     timer = setTimeout(async () => {
-      const err = new Error("Timed out after 45s at step: " + state.step);
-      err.screenshot = await page.screenshot({ fullPage: false }).catch(() => null);
-      reject(err);
-    }, 45000);
-  });
-  try {
-    await Promise.race([
-      loginToSparxCore(page, school, username, password, isMicrosoft, state),
-      timeoutPromise
-    ]);
-  } catch (err) {
-    if (!err.screenshot) {
-      err.screenshot = await page.screenshot({ fullPage: false }).catch(() => null);
-    }
-    throw err;
-  } finally {
-    clearTimeout(timer);
-  }
+      const pageScan = await page.evaluate(() => (document.body ? document.body.innerText.slice(0, 180).replace(/\s+/g, ' ') : 'Empty page')).catch(() => 'Unreadable');
+const err = new Error('Timed out after 45s at step: ' + state.step + '\nPage scan: ' + pageScan + '');
+err.screenshot = await page.screenshot({ fullPage: false }).catch(() => null);
+reject(err);
+}, 45000);
+});
+try {
+await Promise.race([
+loginToSparxCore(page, school, username, password, isMicrosoft, state),
+timeoutPromise
+]);
+} catch (err) {
+if (!err.screenshot) {
+err.screenshot = await page.screenshot({ fullPage: false }).catch(() => null);
 }
-
+throw err;
+} finally {
+clearTimeout(timer);
+}
+}
 async function runHomeworkInDM(user, session, targetHw) {
-  const delayMs = session.speed === 'quick' ? 12000 : session.speed === 'normal' ? 30000 : 60000;
-  const tasks = [
-    { done: 0, total: 6 },
-    { done: 0, total: 6 },
-    { done: 0, total: 6 },
-    { done: 0, total: 6 }
-  ];
-
-  const dmMsg = await user.send(
-    buildProgressPayload(session, targetHw.title, 'Connecting to Sparx Maths...', tasks)
-  );
-
-  let browser;
-  let page;
-  const bookworkLog = {};
-
-  try {
-    browser = await getFastBrowser();
-    page = await browser.newPage();
-
-    await loginToSparx(page, session.school, session.username, session.password, session.isMicrosoft);
-
-    await dmMsg.edit(
-      buildProgressPayload(session, targetHw.title, 'Opening ' + targetHw.title + '...', tasks)
-    );
-
-    await page.evaluate((hwTitle) => {
-      const rows = Array.from(document.querySelectorAll('div, button, a, span'));
-      const target = rows.find(el => el.innerText && el.innerText.includes(hwTitle) && el.innerText.length < 150);
-      if (target) target.click();
-    }, targetHw.title);
-    await new Promise(r => setTimeout(r, 700));
-
-    await page.evaluate(() => {
-      const links = Array.from(document.querySelectorAll('a, button, div'));
-      const taskItem = links.find(el =>
-        el.innerText && (el.innerText.includes('1A') || el.innerText.includes('Task 1') || el.getAttribute('href')?.includes('/task/'))
-      );
-      if (taskItem) taskItem.click();
-    });
-    await new Promise(r => setTimeout(r, 1000));
-    await dismissCookies(page);
-
-    for (let i = 0; i < 6; i++) {
-      tasks.at(0).done = i;
-      const qCode = '1' + String.fromCharCode(65 + i);
-
-      await dmMsg.edit(
-        buildProgressPayload(session, targetHw.title, 'Solving ' + qCode + ' in Task 1...', tasks)
-      );
-
-      const isBookwork = await page.evaluate(() => document.body.innerText.includes('Bookwork check'));
-      if (isBookwork) {
-        const codeNeeded = await page.evaluate(() => {
-          const m = document.body.innerText.match(/Bookwork code:\s*([A-Z0-9]+)/i);
-          return m ? m.at(1) : null;
-        });
-        if (codeNeeded && bookworkLog[codeNeeded]) {
-          await page.evaluate((ans) => {
-            const btn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes(ans));
-            if (btn) btn.click();
-          }, bookworkLog[codeNeeded]);
-          await new Promise(r => setTimeout(r, 800));
-          continue;
+const delayMs = session.speed === 'quick' ? 12000 : session.speed === 'normal' ? 30000 : 60000;
+const tasks = [
+{ done: 0, total: 6 },
+{ done: 0, total: 6 },
+{ done: 0, total: 6 },
+{ done: 0, total: 6 }
+];
+const dmMsg = await user.send(
+buildProgressPayload(session, targetHw.title, 'Connecting to Sparx Maths...', tasks)
+);
+let browser;
+let page;
+const bookworkLog = {};
+try {
+browser = await getFastBrowser();
+page = await browser.newPage();
+await loginToSparx(page, session.school, session.username, session.password, session.isMicrosoft);
+await dmMsg.edit(
+buildProgressPayload(session, targetHw.title, 'Opening ' + targetHw.title + '...', tasks)
+);
+await scanAndClick(page, (el, hwTitle) => {
+const t = (el.innerText || '').trim();
+return t.includes(hwTitle) && t.length < 150;
+}, targetHw.title);
+await new Promise(r => setTimeout(r, 700));
+await scanAndClick(page, (el) => {
+const t = (el.innerText || '').trim();
+return (t.includes('1A') || t.includes('Task 1') || el.getAttribute('href')?.includes('/task/')) && t.length < 100;
+});
+await new Promise(r => setTimeout(r, 1000));
+await dismissCookies(page);
+for (let i = 0; i < 6; i++) {
+tasks.at(0).done = i;
+const qCode = '1' + String.fromCharCode(65 + i);
+await dmMsg.edit(
+buildProgressPayload(session, targetHw.title, 'Solving ' + qCode + ' in Task 1...', tasks)
+);
+const isBookwork = await page.evaluate(() => document.body.innerText.includes('Bookwork check'));
+if (isBookwork) {
+const codeNeeded = await page.evaluate(() => {
+const m = document.body.innerText.match(/Bookwork code:\s*([A-Z0-9]+)/i);
+return m ? m.at(1) : null;
+});
+if (codeNeeded && bookworkLog[codeNeeded]) {
+await scanAndClick(page, (el, ans) => el.tagName === 'BUTTON' && (el.innerText || '').includes(ans), bookworkLog[codeNeeded]);
+await new Promise(r => setTimeout(r, 800));
+continue;
 }
 }
 const shot = await page.screenshot({ encoding: 'base64' });
@@ -285,27 +316,31 @@ const answer = res.choices.at(0).message.content.trim();
 if (currentCode) bookworkLog[currentCode] = answer;
 await new Promise(r => setTimeout(r, delayMs));
 const inputSel = 'input[type="text"], input[type="number"]';
-if (await page.$(inputSel)) {
-await page.click(inputSel, { clickCount: 3 });
+const inputEl = await page.$(inputSel);
+if (inputEl) {
+const box = await inputEl.boundingBox();
+if (box) await realMouseClick(page, box.x + box.width / 2, box.y + box.height / 2);
+await page.keyboard.down('Control');
+await page.keyboard.press('A');
+await page.keyboard.up('Control');
 await page.keyboard.press('Backspace');
-await page.type(inputSel, answer, { delay: 30 });
+await page.keyboard.type(answer, { delay: 30 });
 } else {
-await page.evaluate((ans) => {
-const btns = Array.from(document.querySelectorAll('button, [role="button"]'));
-const opt = btns.find(b => b.innerText && b.innerText.trim().toLowerCase() === ans.toLowerCase());
-if (opt) opt.click();
+await scanAndClick(page, (el, ans) => {
+if (el.tagName !== 'BUTTON' && el.getAttribute('role') !== 'button') return false;
+return (el.innerText || '').trim().toLowerCase() === ans.toLowerCase();
 }, answer);
 }
-await page.evaluate(() => {
-const btns = Array.from(document.querySelectorAll('button'));
-const sub = btns.find(b => b.innerText && ['submit', 'check', 'answer'].some(w => b.innerText.toLowerCase().includes(w)));
-if (sub) sub.click();
+await scanAndClick(page, (el) => {
+if (el.tagName !== 'BUTTON') return false;
+const t = (el.innerText || '').toLowerCase();
+return ['submit', 'check', 'answer'].some(w => t.includes(w));
 });
 await new Promise(r => setTimeout(r, 1200));
-await page.evaluate(() => {
-const btns = Array.from(document.querySelectorAll('button'));
-const next = btns.find(b => b.innerText && ['next', 'continue'].some(w => b.innerText.toLowerCase().includes(w)));
-if (next) next.click();
+await scanAndClick(page, (el) => {
+if (el.tagName !== 'BUTTON') return false;
+const t = (el.innerText || '').toLowerCase();
+return ['next', 'continue'].some(w => t.includes(w));
 });
 await new Promise(r => setTimeout(r, 1000));
 }
