@@ -190,25 +190,34 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     await page.waitForSelector('input[type="password"]', { timeout: 10000 });
     await dismissCookies(page);
     await new Promise(r => setTimeout(r, 300));
-    const boxes = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll("input:not([type=hidden])"))
-        .map(el => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width }; })
-        .filter(b => b.w > 20);
-    });
-    if (boxes.length >= 2) {
-      await realMouseClick(page, boxes.at(0).x, boxes.at(0).y);
-      await new Promise(r => setTimeout(r, 150));
-      await page.keyboard.type(username, { delay: 15 });
-      await realMouseClick(page, boxes.at(1).x, boxes.at(1).y);
-      await new Promise(r => setTimeout(r, 150));
-      await page.keyboard.type(password, { delay: 15 });
-    }
+    const filled = await page.evaluate((user, pass) => {
+      const passInput = document.querySelector("input[type=password]");
+      if (!passInput) return false;
+      const allInputs = Array.from(document.querySelectorAll("input:not([type=hidden])"));
+      const passIdx = allInputs.indexOf(passInput);
+      const userInput = passIdx > 0 ? allInputs.at(passIdx - 1) : null;
+      if (!userInput) return false;
+
+      const setReactVal = (el, val) => {
+        el.focus();
+        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+        setter.call(el, val);
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+      };
+
+      setReactVal(userInput, user);
+      setReactVal(passInput, pass);
+      return true;
+    }, username, password);
+
+    await new Promise(r => setTimeout(r, 300));
     const clickedLogin = await scanAndClick(page, (el) => {
-      if (el.tagName !== 'BUTTON' && el.type !== 'submit') return false;
-      const t = (el.innerText || el.value || '').trim().toLowerCase();
-      return t === 'log in' || t === 'login' || t === 'sign in';
+      if (el.tagName !== "BUTTON" && el.type !== "submit") return false;
+      const t = (el.innerText || el.value || "").trim().toLowerCase();
+      return t === "log in" || t === "login" || t === "sign in";
     });
-    if (!clickedLogin) await page.keyboard.press('Enter');
+    if (!clickedLogin) await page.keyboard.press("Enter");
     await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => {});
   }
 
