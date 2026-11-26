@@ -109,8 +109,8 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     const inp = document.querySelector('input');
     if (inp) inp.focus();
   });
-  await page.keyboard.type(school, { delay: 5 });
-  await new Promise(r => setTimeout(r, 500));
+  await page.keyboard.type(school, { delay: 1 });
+  await new Promise(r => setTimeout(r, 250));
 
   await page.evaluate((schoolName) => {
     const cleanQuery = schoolName.toLowerCase().replace(/\s+/g, '');
@@ -123,10 +123,8 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     if (match) match.click();
   }, school);
 
-  await new Promise(r => setTimeout(r, 200));
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await new Promise(r => setTimeout(r, 250));
 
   await page.evaluate(() => {
     const btns = Array.from(document.querySelectorAll('button'));
@@ -134,7 +132,6 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     if (contBtn) contBtn.click();
   });
 
-  await new Promise(r => setTimeout(r, 500));
   await dismissCookies(page);
 
   if (isMicrosoft) {
@@ -167,7 +164,7 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
   }
 
   state.step = 'Loading Homework dashboard';
-  await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 12000 }).catch(() => {});
+  await page.waitForFunction(() => document.body && document.body.innerText.includes('Homework'), { timeout: 5000 }).catch(() => {});
   await dismissCookies(page);
 
   // Save session cookies for instant ~2s future logins & task starts
