@@ -143,32 +143,31 @@ async function performSparxLogin(interaction, { school, username, password, isMi
     await interaction.editReply('Step 3/3: Reading your homework list...');
 
     let scraped = { name: 'Student', homeworks: [] };
-    for (let attempt = 0; attempt < 6; attempt++) {
-      await new Promise(r => setTimeout(r, 700));
+    for (let attempt = 0; attempt < 15; attempt++) {
+      await new Promise(r => setTimeout(r, 800));
       try {
         scraped = await page.evaluate(() => {
-          const text = document.body ? document.body.innerText : '';
+          const text = document.body ? document.body.innerText : "";
           const nameMatch = text.match(/Hey\s+([A-Za-z0-9_-]+)/i);
-          const name = nameMatch ? nameMatch.at(1) : 'Student';
-          const rawLines = text.split('\n').map(l => l.trim()).filter(Boolean);
+          const name = nameMatch ? nameMatch.at(1) : "Student";
+          const rawLines = text.split("\n").map(l => l.trim()).filter(Boolean);
           const homeworks = [];
           const seen = new Set();
 
           for (let i = 0; i < rawLines.length; i++) {
             const line = rawLines.at(i);
-            if (/^Independent Learning$/i.test(line) || /^Personal Practice$/i.test(line)) continue;
-            if (/^Homework due/i.test(line)) {
+            if (/^(Homework due|Compulsory|XP Boost|Target)/i.test(line)) {
               if (!seen.has(line)) {
                 seen.add(line);
-                const nearby = rawLines.slice(i, i + 4).join(' ');
+                const nearby = rawLines.slice(i, i + 4).join(" ");
                 const isDone = /100%|Completed/i.test(nearby);
-                homeworks.push({ id: 'hw_' + homeworks.length, title: line.slice(0, 95), completed: isDone });
+                homeworks.push({ id: "hw_" + homeworks.length, title: line.slice(0, 95), completed: isDone });
               }
             }
           }
           return { name, homeworks };
         });
-        if (scraped.homeworks.length > 0) break;
+        if (scraped.name !== "Student" && scraped.homeworks.length > 0) break;
       } catch (e) {}
     }
 
@@ -245,18 +244,27 @@ if (interaction.customId === 'open_sparx_modal' || interaction.customId === 'ope
             { label: 'Sparx Science', value: 'science', emoji: '🇸', default: saved.platform === 'science' }
           ]);
 
-        modal.addLabelComponents(
-          new LabelBuilder().setLabel('Platform').setStringSelectMenuComponent(platformSelect),
-          new LabelBuilder().setLabel('School Name').setTextInputComponent(
-            new TextInputBuilder().setCustomId('school_input').setStyle(TextInputStyle.Short).setValue(saved.school).setRequired(true)
-          ),
-          new LabelBuilder().setLabel('Username or Email').setTextInputComponent(
-            new TextInputBuilder().setCustomId('username_input').setStyle(TextInputStyle.Short).setValue(saved.username).setRequired(true)
-          ),
-          new LabelBuilder().setLabel('Password').setTextInputComponent(
-            new TextInputBuilder().setCustomId('password_input').setStyle(TextInputStyle.Short).setValue(saved.password).setRequired(true)
-          )
-        );
+        if (typeof LabelBuilder === "function" && typeof modal.addLabelComponents === "function") {
+          modal.addLabelComponents(
+            new LabelBuilder().setLabel("Platform").setStringSelectMenuComponent(platformSelect),
+            new LabelBuilder().setLabel("School Name").setTextInputComponent(
+              new TextInputBuilder().setCustomId("school_input").setStyle(TextInputStyle.Short).setValue(saved.school).setRequired(true)
+            ),
+            new LabelBuilder().setLabel("Username or Email").setTextInputComponent(
+              new TextInputBuilder().setCustomId("username_input").setStyle(TextInputStyle.Short).setValue(saved.username).setRequired(true)
+            ),
+            new LabelBuilder().setLabel("Password").setTextInputComponent(
+              new TextInputBuilder().setCustomId("password_input").setStyle(TextInputStyle.Short).setValue(saved.password).setRequired(true)
+            )
+          );
+        } else {
+          modal.setTitle(isMs ? "Microsoft Sparx Login" : "Sparx Maths Login");
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("school_input").setLabel("School Name").setStyle(TextInputStyle.Short).setValue(saved.school).setRequired(true)),
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("username_input").setLabel("Username or Email").setStyle(TextInputStyle.Short).setValue(saved.username).setRequired(true)),
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("password_input").setLabel("Password").setStyle(TextInputStyle.Short).setValue(saved.password).setRequired(true))
+          );
+        }
         return await interaction.showModal(modal);
       }
 if (interaction.customId === 'saved_account_btn') {
