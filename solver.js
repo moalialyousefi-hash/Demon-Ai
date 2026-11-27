@@ -418,7 +418,10 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
               max_tokens: 120
             });
           } catch (visionErr) {
-            const qText = await page.evaluate(() => document.body ? document.body.innerText.slice(0, 1500) : "").catch(() => "");
+            const qText = await page.evaluate(() => {
+              const raw = document.body ? document.body.innerText : "";
+              return raw.replace(/(\d+)\n(\d+)/g, "$1/$2").slice(0, 1500);
+            }).catch(() => "");
             try {
               res = await groq.chat.completions.create({
                 model: "llama-3.3-70b-versatile",
@@ -442,7 +445,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
         await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
         await new Promise(r => setTimeout(r, 600));
 
-        const inputSel = "input[type=\"text\"], input[type=\"number\"]";
+        const inputSel = "input:not([type=\"hidden\"]):not([type=\"checkbox\"]):not([type=\"radio\"])";
         const inputVisible = await page.$(inputSel);
         if (inputVisible) {
           await page.click(inputSel, { clickCount: 3 });
