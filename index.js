@@ -32,9 +32,10 @@ try {
 } catch (e) {}
 
 client.on('error', err => console.error('[DISCORD CLIENT ERROR]', err));
+function getSavedList(userId){const local=savedAccounts.get(userId);if(local&&local.length>0)return local;if(process.env.DEFAULT_SAVED_ACCOUNTS){try{return JSON.parse(process.env.DEFAULT_SAVED_ACCOUNTS);}catch(e){}}return[];}
 
 function upsertSavedAccount(userId, account) {
-  const list = savedAccounts.get(userId) || [];
+  const list = getSavedList(userId);
   const idx = list.findIndex(a => a.username.toLowerCase() === account.username.toLowerCase() && !!a.isMicrosoft === !!account.isMicrosoft);
   if (idx >= 0) list[idx] = account;
   else list.push(account);
@@ -43,7 +44,7 @@ function upsertSavedAccount(userId, account) {
 }
 
 function buildSavedAccountsMenu(userId, selectedIdx = null) {
-  const list = savedAccounts.get(userId) || [];
+  const list = getSavedList(userId);
   const embed = new EmbedBuilder()
     .setTitle('Saved Accounts')
     .setDescription(list.length > 0 ? 'Choose a saved login to manage or sign in immediately.' : 'No saved logins yet. Use **Sparx Login** or **Microsoft Login** first!')
@@ -229,7 +230,7 @@ return await interaction.reply({ embeds: [embed], components: [row] });
 if (interaction.isButton()) {
 if (interaction.customId === 'open_sparx_modal' || interaction.customId === 'open_ms_modal') {
 const isMs = interaction.customId === 'open_ms_modal';
-const list = savedAccounts.get(interaction.user.id) || [];
+const list = getSavedList(interaction.user.id);
 const saved = list.find(a => !!a.isMicrosoft === isMs) || { school: '', username: '', password: '' };
 const modal = new ModalBuilder()
 .setCustomId(isMs ? 'ms_login_modal' : 'sparx_login_modal')
@@ -252,7 +253,7 @@ return await interaction.reply(buildSavedAccountsMenu(interaction.user.id));
 }
 if (interaction.customId.startsWith('quick_login_saved_')) {
 const idx = Number(interaction.customId.replace('quick_login_saved_', ''));
-const list = savedAccounts.get(interaction.user.id) || [];
+const list = getSavedList(interaction.user.id);
 const acc = list[idx];
 if (!acc) return await interaction.reply({ content: 'Saved account not found.', flags: 64 });
 await interaction.deferUpdate();
@@ -260,7 +261,7 @@ return await performSparxLogin(interaction, acc);
 }
 if (interaction.customId.startsWith('delete_saved_')) {
 const idx = Number(interaction.customId.replace('delete_saved_', ''));
-const list = savedAccounts.get(interaction.user.id) || [];
+const list = getSavedList(interaction.user.id);
 list.splice(idx, 1);
 savedAccounts.set(interaction.user.id, list);
 saveState();
@@ -312,7 +313,7 @@ return;
 if (interaction.isStringSelectMenu()) {
 if (interaction.customId === 'manage_saved_account_menu') {
         const idx = Number(interaction.values.at(0));
-        const list = savedAccounts.get(interaction.user.id) || [];
+        const list = getSavedList(interaction.user.id);
         const acc = list[idx];
         if (!acc) return await interaction.reply({ content: 'Saved account not found.', flags: 64 });
         await interaction.deferUpdate();
