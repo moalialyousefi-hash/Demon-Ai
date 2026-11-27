@@ -35,12 +35,35 @@ async function getFastBrowser() {
   return sharedBrowser;
 }
 
+let lastCursorX = 640;
+let lastCursorY = 360;
+
+async function smoothMoveCursor(page, targetX, targetY) {
+  const steps = 18;
+  const startX = lastCursorX;
+  const startY = lastCursorY;
+  const ctrlX = (startX + targetX) / 2 + (Math.random() * 60 - 30);
+  const ctrlY = (startY + targetY) / 2 + (Math.random() * 40 - 20);
+
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const bx = Math.pow(1 - ease, 2) * startX + 2 * (1 - ease) * ease * ctrlX + Math.pow(ease, 2) * targetX;
+    const by = Math.pow(1 - ease, 2) * startY + 2 * (1 - ease) * ease * ctrlY + Math.pow(ease, 2) * targetY;
+    await page.mouse.move(bx, by).catch(() => {});
+    await new Promise(r => setTimeout(r, 12));
+  }
+  lastCursorX = targetX;
+  lastCursorY = targetY;
+}
+
 async function realMouseClick(page, x, y) {
-  await page.mouse.move(x, y, { steps: 12 });
-  await new Promise(r => setTimeout(r, 60));
-  await page.mouse.down();
-  await new Promise(r => setTimeout(r, 40));
-  await page.mouse.up();
+  await smoothMoveCursor(page, x, y);
+  await new Promise(r => setTimeout(r, 45));
+  await page.mouse.down().catch(() => {});
+  await new Promise(r => setTimeout(r, 35));
+  await page.mouse.up().catch(() => {});
+  await new Promise(r => setTimeout(r, 90));
 }
 
 async function scanAndClick(page, matcherFn, arg = null) {
@@ -481,7 +504,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           } catch (visionErr) {
             const qText = await page.evaluate(() => {
               const raw = document.body ? document.body.innerText : "";
-              return raw.replace(/(\d+)\n(\d+)/g, "$1/$2").slice(0, 1500);
+              return raw.replace(/(\d+)\s*\n\s*(\d+)/g, "$1/$2").replace(/Enter number/gi, "").slice(0, 1800);
             }).catch(() => "");
             try {
               res = await groq.chat.completions.create({
@@ -509,28 +532,49 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
         await new Promise(r => setTimeout(r, 700));
 
         const visInputs = await page.evaluate(() => {
-          return Array.from(document.querySelectorAll("input")).filter(el => {
+          const raw = Array.from(document.querySelectorAll("input")).filter(el => {
             const r = el.getBoundingClientRect();
-            return el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio" && r.width > 30 && r.height > 12;
+            const style = window.getComputedStyle(el);
+            return el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio" &&
+                   style.visibility !== "hidden" && style.display !== "none" &&
+                   r.width > 30 && r.height > 12;
           }).map(el => {
             const r = el.getBoundingClientRect();
             return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-          });
+          }).sort((a, b) => a.y - b.y);
+
+          const unique = [];
+          for (const box of raw) {
+            if (!unique.some(u => Math.abs(u.y - box.y) < 15 && Math.abs(u.x - box.x) < 15)) {
+              unique.push(box);
+            }
+          }
+          return unique;
         }).catch(() => []);
 
         if (visInputs.length >= 2 && answer.includes("/")) {
-          const [num, den] = answer.split("/");
+          const parts = answer.split("/");
+          const num = (parts.at(0) || "").trim();
+          const den = (parts.at(1) || "").trim();
+
           await realMouseClick(page, visInputs.at(0).x, visInputs.at(0).y);
-          await new Promise(r => setTimeout(r, 120));
+          await new Promise(r => setTimeout(r, 140));
           await page.keyboard.down("Control"); await page.keyboard.press("a"); await page.keyboard.up("Control");
           await page.keyboard.press("Backspace");
-          await page.keyboard.type(num.trim(), { delay: 30 });
+          await page.keyboard.type(num, { delay: 35 });
 
           await realMouseClick(page, visInputs.at(1).x, visInputs.at(1).y);
-          await new Promise(r => setTimeout(r, 120));
+          await new Promise(r => setTimeout(r, 140));
           await page.keyboard.down("Control"); await page.keyboard.press("a"); await page.keyboard.up("Control");
           await page.keyboard.press("Backspace");
-          await page.keyboard.type(den.trim(), { delay: 30 });
+          await page.keyboard.type(den, { delay: 35 });
+          await page.keyboard.press("Enter");
+        } else if (visInputs.length >= 1) {
+          await realMouseClick(page, visInputs.at(0).x, visInputs.at(0).y);
+          await new Promise(r => setTimeout(r, 140));
+          await page.keyboard.down("Control"); await page.keyboard.press("a"); await page.keyboard.up("Control");
+          await page.keyboard.press("Backspace");
+          await page.keyboard.type(answer, { delay: 35 });
           await page.keyboard.press("Enter");
         } else if (visInputs.length >= 1) {
           await realMouseClick(page, visInputs.at(0).x, visInputs.at(0).y);
