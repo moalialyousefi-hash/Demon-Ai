@@ -318,6 +318,8 @@ clearTimeout(timer);
 }
 }
 async function runHomeworkInDM(user, session, targetHw) {
+  let lastQCode = "";
+  let sameQCount = 0;
 const delayMs = session.speed === 'quick' ? 2500 : session.speed === 'normal' ? 15000 : 40000;
 const tasks = [
 { done: 0, total: 6 },
