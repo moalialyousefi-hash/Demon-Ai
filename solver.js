@@ -380,18 +380,32 @@ let answer = "";
         answer = gData.candidates.at(0).content.parts.at(0).text.trim();
       } else {
         let res;
+        const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths. Carefully read all numbers, fractions, units, and rounding instructions. Solve step-by-step internally, then output ONLY the exact final value or exact multiple-choice button label to enter—never include working or extra words.";
         try {
           res = await groq.chat.completions.create({
-            model: "meta-llama/llama-4-scout-17b-16e-instruct",
+            model: "qwen/qwen3.8-27b",
             messages: [
-              { role: "system", content: "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths. Carefully read all numbers, diagrams, axes, units, and rounding instructions in the screenshot. Solve step-by-step internally, then output ONLY the exact final value or exact multiple-choice button label to enter—never include working or extra words." },
+              { role: "system", content: sysPrompt },
               { role: "user", content: [{ type: "text", text: "Solve this Sparx Maths question accurately. Output ONLY the exact answer to enter or click." }, { type: "image_url", image_url: { url: "data:image/png;base64," + shot } }] }
             ],
             temperature: 0.1,
             max_tokens: 120
           });
-        } catch (apiErr) {
-          throw new Error("Groq AI (" + (apiErr.status || "ERR") + "): " + apiErr.message);
+        } catch (visionErr) {
+          const qText = await page.evaluate(() => document.body ? document.body.innerText.slice(0, 1500) : "").catch(() => "");
+          try {
+            res = await groq.chat.completions.create({
+              model: "llama-3.3-70b-versatile",
+              messages: [
+                { role: "system", content: sysPrompt },
+                { role: "user", content: "Solve this Sparx Maths question from the page text and output ONLY the exact final answer:\n\n" + qText }
+              ],
+              temperature: 0.1,
+              max_tokens: 120
+            });
+          } catch (apiErr) {
+            throw new Error("Groq AI (" + (apiErr.status || "ERR") + "): " + apiErr.message);
+          }
         }
         answer = res.choices.at(0).message.content.trim();
       }
