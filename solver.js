@@ -300,7 +300,7 @@ clearTimeout(timer);
 }
 }
 async function runHomeworkInDM(user, session, targetHw) {
-const delayMs = session.speed === 'quick' ? 12000 : session.speed === 'normal' ? 30000 : 60000;
+const delayMs = session.speed === 'quick' ? 2500 : session.speed === 'normal' ? 15000 : 40000;
 const tasks = [
 { done: 0, total: 6 },
 { done: 0, total: 6 },
@@ -459,6 +459,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
 
         answer = answer.replace(/^[`"']+|[`"'.]+$/g, "").trim();
         if (currentCode) bookworkLog[currentCode] = answer;
+        await dmMsg.edit(buildProgressPayload(session, targetHw.title, "Entering " + qCode + " (" + answer.slice(0, 25) + ")...", tasks)).catch(() => {});
         await new Promise(r => setTimeout(r, delayMs));
 
         await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
@@ -504,11 +505,12 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
         await new Promise(r => setTimeout(r, 1000));
       }
 
-      const stillOnQuestion = await page.evaluate(() => {
-        return Array.from(document.querySelectorAll("button")).some(b => /^answer$|^submit$/i.test((b.innerText || "").trim()));
-      }).catch(() => false);
-      if (stillOnQuestion) {
-        throw new Error("Could not finish Task " + taskNum + " — see screenshot of current question");
+      const onFirstQStill = await page.evaluate((n) => {
+        const t = document.body ? document.body.innerText : "";
+        return t.includes(n + "A") && !t.includes("Task complete") && !t.includes("Well done");
+      }, taskNum).catch(() => false);
+      if (onFirstQStill) {
+        throw new Error("Stuck on " + taskNum + "A — see screenshot to check why Answer/Submit did not advance");
       }
       tasks.at(taskIdx).done = tasks.at(taskIdx).total;
       await dmMsg.edit(
