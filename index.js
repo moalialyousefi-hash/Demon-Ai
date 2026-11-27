@@ -12,6 +12,21 @@ const { loginToSparx, runHomeworkInDM, getFastBrowser } = require('./solver');
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 const savedAccounts = new Map();
 const userSessions = new Map();
+function saveState() {
+  try {
+    fs.writeFileSync("sessions.json", JSON.stringify({
+      saved: Array.from(savedAccounts.entries()),
+      sessions: Array.from(userSessions.entries())
+    }));
+  } catch (e) {}
+}
+try {
+  if (fs.existsSync("sessions.json")) {
+    const raw = JSON.parse(fs.readFileSync("sessions.json", "utf8"));
+    (raw.saved || []).forEach(([k, v]) => savedAccounts.set(k, v));
+    (raw.sessions || []).forEach(([k, v]) => userSessions.set(k, v));
+  }
+} catch (e) {}
 
 client.on('error', err => console.error('[DISCORD CLIENT ERROR]', err));
 
@@ -151,7 +166,12 @@ client.on('interactionCreate', async (interaction) => {
 
       if (interaction.customId === 'run_selected_hw_btn') {
         const session = userSessions.get(interaction.user.id);
-        if (!session || !session.selectedHwId) return await interaction.reply({ content: 'Select a homework first!', flags: 64 });
+        if (!session) return await interaction.reply({ content: "Session expired — click Sparx Login once to refresh!", flags: 64 });
+        if (!session.selectedHwId && session.homeworks && session.homeworks.length > 0) {
+          const fallback = session.homeworks.find(h => !h.completed) || session.homeworks.at(0);
+          session.selectedHwId = fallback.id;
+        }
+        if (!session.selectedHwId) return await interaction.reply({ content: "No homework found — click Show Completed or re-login!", flags: 64 });
 
         const targetHw = session.homeworks.find(h => h.id === session.selectedHwId);
         await interaction.update({
@@ -247,7 +267,7 @@ selectedHwId: firstIncomplete ? firstIncomplete.id : null,
 showCompleted: !firstIncomplete,
 speed: 'quick'
 };
-userSessions.set(interaction.user.id, session);
+userSessions.set(interaction.user.id, session); saveState();
 await interaction.editReply(buildSparxDashboard(session));
 } catch (err) {
 clearInterval(statusTicker);
