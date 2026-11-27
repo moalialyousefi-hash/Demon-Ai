@@ -373,8 +373,15 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
         }).catch(() => false);
         if (taskFinished) break;
 
-        tasks.at(taskIdx).done = Math.min(i, tasks.at(taskIdx).total - 1);
-        const qCode = taskNum + String.fromCharCode(65 + i);
+        const realQ = await page.evaluate((n) => {
+          const m = (document.body ? document.body.innerText : "").match(new RegExp("\\b(" + n + "[A-Z])\\b"));
+          return m ? m.at(1) : null;
+        }, taskNum).catch(() => null);
+        const qCode = realQ || (taskNum + String.fromCharCode(65 + i));
+        const letterIdx = qCode.charCodeAt(qCode.length - 1) - 65;
+        if (letterIdx >= 0 && letterIdx < 12) {
+          tasks.at(taskIdx).done = Math.min(letterIdx, tasks.at(taskIdx).total - 1);
+        }
 
         await dmMsg.edit(
           buildProgressPayload(session, targetHw.title, "Solving " + qCode + " in Task " + taskNum + "...", tasks)
@@ -463,6 +470,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           await page.click(inputSel, { clickCount: 3 }).catch(() => {});
           await page.keyboard.press("Backspace").catch(() => {});
           await page.type(inputSel, answer, { delay: 30 }).catch(() => {});
+          await page.keyboard.press("Enter").catch(() => {});
         } else {
           await scanAndClick(page, (el, ans) => {
             if (el.tagName !== "BUTTON" && el.getAttribute("role") !== "button") return false;
