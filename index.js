@@ -171,6 +171,9 @@ async function performSparxLogin(interaction, { school, username, password, isMi
       } catch (e) {}
     }
 
+    if (scraped.homeworks.length === 0 && scraped.name === "Student") {
+      return await interaction.editReply({ content: "Could not load your Sparx dashboard — if your school uses Microsoft 365 (like Dean Trust), click the green **Microsoft Login** button instead of Sparx Login!" });
+    }
     const firstIncomplete = scraped.homeworks.find(h => !h.completed);
     const session = {
       school, username, password, isMicrosoft,
