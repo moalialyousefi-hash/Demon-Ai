@@ -143,7 +143,7 @@ client.on('interactionCreate', async (interaction) => {
 
       if (interaction.customId === 'toggle_completed_btn') {
         const session = userSessions.get(interaction.user.id);
-        if (!session) return await interaction.reply({ content: 'Session expired. Log in again!', ephemeral: true });
+        if (!session) return await interaction.reply({ content: 'Session expired. Log in again!', flags: 64 });
         session.showCompleted = !session.showCompleted;
         session.selectedHwId = null;
         return await interaction.update(buildSparxDashboard(session));
@@ -151,7 +151,7 @@ client.on('interactionCreate', async (interaction) => {
 
       if (interaction.customId === 'run_selected_hw_btn') {
         const session = userSessions.get(interaction.user.id);
-        if (!session || !session.selectedHwId) return await interaction.reply({ content: 'Select a homework first!', ephemeral: true });
+        if (!session || !session.selectedHwId) return await interaction.reply({ content: 'Select a homework first!', flags: 64 });
 
         const targetHw = session.homeworks.find(h => h.id === session.selectedHwId);
         await interaction.update({
@@ -163,7 +163,7 @@ client.on('interactionCreate', async (interaction) => {
         runHomeworkInDM(interaction.user, session, targetHw).catch(async () => {
           await interaction.followUp({
             content: 'I could not send you a DM! Please enable **Direct Messages** from server members in your Discord Privacy Settings.',
-            ephemeral: true
+            flags: 64
           });
         });
         return;
@@ -172,7 +172,7 @@ client.on('interactionCreate', async (interaction) => {
 
     if (interaction.isStringSelectMenu()) {
       const session = userSessions.get(interaction.user.id);
-      if (!session) return await interaction.reply({ content: 'Session expired. Log in again!', ephemeral: true });
+      if (!session) return await interaction.reply({ content: 'Session expired. Log in again!', flags: 64 });
 
       if (interaction.customId === 'select_homework_menu') {
         const val = interaction.values.at(0);
@@ -186,7 +186,7 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     if (interaction.isModalSubmit() && (interaction.customId === 'sparx_login_modal' || interaction.customId === 'ms_login_modal')) {
-      console.log("[M1] deferReply start"); await interaction.deferReply({ flags: 64 }); console.log("[M2] deferReply done");
+      await interaction.deferReply({ flags: 64 });
       const isMicrosoft = interaction.customId === 'ms_login_modal';
       const school = interaction.fields.getTextInputValue('school_input');
       const username = interaction.fields.getTextInputValue('username_input');
@@ -201,47 +201,66 @@ client.on('interactionCreate', async (interaction) => {
 
       try {
         await interaction.editReply('Step 1/3: Connecting to browser (0s)...');
-        statusTicker = setInterval(() => {
-          seconds += 5;
-          interaction.editReply('Logging into Sparx Maths (' + seconds + 's elapsed)...').catch(() => {});
-        }, 5000);
-
-        console.log("[M3] getFastBrowser start"); console.log("[M3] browser"); browser = await getFastBrowser(); console.log("[M4] page"); console.log("[M4] getFastBrowser done");
-        page = await browser.newPage();
-        console.log("[M5] loginToSparx start"); console.log("[M5] login"); await loginToSparx(page, school, username, password, isMicrosoft); console.log("[M6] loginToSparx done");
-
-        clearInterval(statusTicker);
-        await interaction.editReply('Step 3/3: Reading your homework list...');
-
-        await new Promise(r => setTimeout(r, 1000));
-        let scraped = { name: "Student", homeworks: [] };
-        for (let attempt = 0; attempt < 6; attempt++) {
-          await new Promise(r => setTimeout(r, 700));
-          try {
-            scraped = await page.evaluate(() => {
-              const text = document.body ? document.body.innerText : "";
-              const nameMatch = text.match(/Hey\s+([A-Za-z0-9_-]+)/i);
-              const name = nameMatch ? nameMatch.at(1) : "Student";
-              const rawLines = text.split("\n").map(l => l.trim()).filter(Boolean);
-              const homeworks = [];
-              const seen = new Set();
-
-              for (let i = 0; i < rawLines.length; i++) {
-                const line = rawLines.at(i);
-                if (/^Independent Learning$/i.test(line) || /^Personal Practice$/i.test(line)) continue;
-
-                if (/^Homework due/i.test(line)) {
-                  if (!seen.has(line)) {
-                    seen.add(line);
-                    const nearby = rawLines.slice(i, i + 4).join(" ");
-                    const isDone = /100%|Completed/i.test(nearby);
-                    homeworks.push({ id: "hw_" + homeworks.length, title: line.slice(0, 95), completed: isDone });
-                  }
-                }
-              }
-              return { name, homeworks };
-            });
-            if (scraped.homeworks.length > 0) break;
+statusTicker = setInterval(() => {
+seconds += 5;
+interaction.editReply('Logging into Sparx Maths (' + seconds + 's elapsed)...').catch(() => {});
+}, 5000);
+browser = await getFastBrowser();
+page = await browser.newPage();
+await loginToSparx(page, school, username, password, isMicrosoft);
+clearInterval(statusTicker);
+await interaction.editReply('Step 3/3: Reading your homework list...');
+let scraped = { name: 'Student', homeworks: [] };
+for (let attempt = 0; attempt < 6; attempt++) {
+await new Promise(r => setTimeout(r, 700));
+try {
+scraped = await page.evaluate(() => {
+const text = document.body ? document.body.innerText : '';
+const nameMatch = text.match(/Hey\s+([A-Za-z0-9_-]+)/i);
+const name = nameMatch ? nameMatch.at(1) : 'Student';
+const rawLines = text.split('\n').map(l => l.trim()).filter(Boolean);
+const homeworks = [];
+const seen = new Set();
+for (let i = 0; i < rawLines.length; i++) {
+const line = rawLines.at(i);
+if (/^Independent Learning$/i.test(line) || /^Personal Practice$/i.test(line)) continue;
+if (/^Homework due/i.test(line)) {
+if (!seen.has(line)) {
+seen.add(line);
+const nearby = rawLines.slice(i, i + 4).join(' ');
+const isDone = /100%|Completed/i.test(nearby);
+homeworks.push({ id: 'hw_' + homeworks.length, title: line.slice(0, 95), completed: isDone });
+}
+}
+}
+return { name, homeworks };
+});
+if (scraped.homeworks.length > 0) break;
+} catch (e) {}
+}
+const firstIncomplete = scraped.homeworks.find(h => !h.completed);
+const session = {
+school, username, password, isMicrosoft,
+studentName: scraped.name,
+homeworks: scraped.homeworks,
+selectedHwId: firstIncomplete ? firstIncomplete.id : null,
+showCompleted: !firstIncomplete,
+speed: 'quick'
+};
+userSessions.set(interaction.user.id, session);
+await interaction.editReply(buildSparxDashboard(session));
+} catch (err) {
+clearInterval(statusTicker);
+console.error('[LOGIN ERROR]', err);
+const files = err.screenshot ? [new AttachmentBuilder(Buffer.from(err.screenshot), { name: 'login_stuck.png' })] : [];
+await interaction.editReply({ content: 'Stopped early: ' + err.message, files });
+} finally {
+clearInterval(statusTicker);
+if (page) await page.close().catch(() => {});
+if (browser) await (browser.disconnect ? browser.disconnect() : browser.close()).catch(() => {});
+}
+}
+} catch (err) {
 console.error('[INTERACTION ERROR]', err);
 }
 });
