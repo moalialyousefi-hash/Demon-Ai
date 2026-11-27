@@ -204,29 +204,36 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
   } else {
     state.step = 'Typing username & password';
     console.log('[STEP]', state.step);
+    await page.waitForSelector('input[type="password"]', { visible: true, timeout: 12000 });
+    await new Promise(r => setTimeout(r, 400));
+    await dismissCookies(page);
+
     await page.evaluate(() => {
-      const passEl = document.querySelector("input[type=password]");
-      const formInputs = passEl && passEl.form ? Array.from(passEl.form.querySelectorAll("input")) : Array.from(document.querySelectorAll("input"));
-      const userEl = formInputs.find(el => el !== passEl && el.type !== "hidden");
+      const passEl = document.querySelector('input[type="password"]');
+      const formInputs = passEl && passEl.form ? Array.from(passEl.form.querySelectorAll('input')) : Array.from(document.querySelectorAll('input'));
+      const userEl = formInputs.find(el => el !== passEl && el.type !== 'hidden');
       if (userEl) { userEl.focus(); userEl.click(); }
     });
     await new Promise(r => setTimeout(r, 150));
     await page.keyboard.type(username, { delay: 20 });
 
     await page.evaluate(() => {
-      const passEl = document.querySelector("input[type=password]");
+      const passEl = document.querySelector('input[type="password"]');
       if (passEl) { passEl.focus(); passEl.click(); }
     });
     await new Promise(r => setTimeout(r, 150));
     await page.keyboard.type(password, { delay: 20 });
 
-    await new Promise(r => setTimeout(r, 300));
-    const clickedLogin = await scanAndClick(page, (el) => {
-      if (el.tagName !== 'BUTTON' && el.type !== 'submit') return false;
-      const t = (el.innerText || el.value || '').trim().toLowerCase();
-      return t === 'log in' || t === 'login' || t === 'sign in';
-    });
-    if (!clickedLogin) await page.keyboard.press('Enter');
+    await new Promise(r => setTimeout(r, 350));
+    const submitted = await page.evaluate(() => {
+      const passEl = document.querySelector('input[type="password"]');
+      const btn = passEl && passEl.form
+        ? passEl.form.querySelector('button[type="submit"], button')
+        : Array.from(document.querySelectorAll('button')).find(b => /log\s*in|sign\s*in/i.test(b.innerText || ''));
+      if (btn && !btn.disabled) { btn.click(); return true; }
+      return false;
+    }).catch(() => false);
+    if (!submitted) await page.keyboard.press('Enter');
     await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 12000 }).catch(() => {});
   }
 
