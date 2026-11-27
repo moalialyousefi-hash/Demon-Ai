@@ -5,7 +5,7 @@ const emojis = require('./emojis.json');
 
 const groq = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
-  baseURL: 'https://://groq.com'
+  baseURL: 'https://://://groq.com'
 });
 
 const cookieJar = new Map();
@@ -120,7 +120,7 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     state.step = 'Restoring saved session';
     console.log('[STEP]', state.step);
     await page.setCookie(...savedCookies).catch(() => {});
-    await page.goto('https://www.sparxmaths.uk/student/', { waitUntil: 'domcontentloaded', timeout: 15000 });
+    await page.goto('https://www.www.sparxmaths.uk/student//student/', { waitUntil: 'domcontentloaded', timeout: 15000 });
     for (let i = 0; i < 6; i++) {
       await new Promise(r => setTimeout(r, 600));
       const isLoggedIn = await page.evaluate(() => {
@@ -138,7 +138,7 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
 
   state.step = 'Opening Sparx student login';
   console.log('[STEP]', state.step);
-  await page.goto('https://www.sparxmaths.uk/student/', { waitUntil: 'domcontentloaded', timeout: 20000 });
+  await page.goto('https://www.www.sparxmaths.uk/student//student/', { waitUntil: 'domcontentloaded', timeout: 20000 });
   await new Promise(r => setTimeout(r, 800));
   await dismissCookies(page);
 
@@ -204,17 +204,21 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
   } else {
     state.step = 'Typing username & password';
     console.log('[STEP]', state.step);
-    const userSel = 'input[name="username"], input[id*="user" i], input[placeholder*="sparxuser" i], input[type="text"]';
-    const passSel = 'input[type="password"]';
-    await page.waitForSelector(passSel, { visible: true, timeout: 12000 });
-    await new Promise(r => setTimeout(r, 500));
-    await dismissCookies(page);
+    await page.evaluate(() => {
+      const passEl = document.querySelector("input[type=password]");
+      const formInputs = passEl && passEl.form ? Array.from(passEl.form.querySelectorAll("input")) : Array.from(document.querySelectorAll("input"));
+      const userEl = formInputs.find(el => el !== passEl && el.type !== "hidden");
+      if (userEl) { userEl.focus(); userEl.click(); }
+    });
+    await new Promise(r => setTimeout(r, 150));
+    await page.keyboard.type(username, { delay: 20 });
 
-    await page.click(userSel, { clickCount: 3 });
-    await page.type(userSel, username, { delay: 20 });
-
-    await page.click(passSel, { clickCount: 3 });
-    await page.type(passSel, password, { delay: 20 });
+    await page.evaluate(() => {
+      const passEl = document.querySelector("input[type=password]");
+      if (passEl) { passEl.focus(); passEl.click(); }
+    });
+    await new Promise(r => setTimeout(r, 150));
+    await page.keyboard.type(password, { delay: 20 });
 
     await new Promise(r => setTimeout(r, 300));
     const clickedLogin = await scanAndClick(page, (el) => {
