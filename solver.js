@@ -206,44 +206,25 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     await new Promise(r => setTimeout(r, 300));
     await dismissCookies(page);
 
-    // Find exact coordinates of Username (visible text input above password) & Password input
-    const coords = await page.evaluate(() => {
-      const passEl = document.querySelector('input[type="password"]');
-      if (!passEl) return null;
-      const visibleInputs = Array.from(document.querySelectorAll('input:not([type="hidden"])')).filter(el => {
-        const r = el.getBoundingClientRect();
-        return r.width > 50 && r.height > 15;
-      });
-      const passIdx = visibleInputs.indexOf(passEl);
-      const userEl = passIdx > 0 ? visibleInputs.at(passIdx - 1) : visibleInputs.at(0);
-      if (!userEl) return null;
-      const ur = userEl.getBoundingClientRect();
-      const pr = passEl.getBoundingClientRect();
-      return {
-        ux: ur.left + ur.width / 2,
-        uy: ur.top + ur.height / 2,
-        px: pr.left + pr.width / 2,
-        py: pr.top + pr.height / 2
-      };
-    });
-
-    if (coords) {
-      await realMouseClick(page, coords.ux, coords.uy);
-      await new Promise(r => setTimeout(r, 120));
-      await page.keyboard.type(username, { delay: 18 });
-
-      await realMouseClick(page, coords.px, coords.py);
-      await new Promise(r => setTimeout(r, 120));
-      await page.keyboard.type(password, { delay: 18 });
+    const userSel = "input[name='username'], input[id*='user' i], input[placeholder*='sparxuser' i], input[type='text']";
+    const userHandle = await page.$(userSel);
+    if (userHandle) {
+      await userHandle.click({ clickCount: 3 });
+      await userHandle.type(username, { delay: 20 });
+    }
+    const passHandle = await page.$("input[type='password']");
+    if (passHandle) {
+      await passHandle.click({ clickCount: 3 });
+      await passHandle.type(password, { delay: 20 });
     }
 
-    await new Promise(r => setTimeout(r, 250));
+    await new Promise(r => setTimeout(r, 300));
     const clickedLogin = await scanAndClick(page, (el) => {
-      if (el.tagName !== 'BUTTON' && el.type !== 'submit') return false;
-      const t = (el.innerText || el.value || '').trim().toLowerCase();
-      return t === 'log in' || t === 'login' || t === 'sign in';
+      if (el.tagName !== "BUTTON" && el.type !== "submit") return false;
+      const t = (el.innerText || el.value || "").trim().toLowerCase();
+      return t === "log in" || t === "login" || t === "sign in";
     });
-if (!clickedLogin) await page.keyboard.press('Enter');
+    if (!clickedLogin) await page.keyboard.press("Enter");
 await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 12000 }).catch(() => {});
 }
 state.step = 'Loading Homework dashboard';
