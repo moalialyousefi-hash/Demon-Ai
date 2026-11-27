@@ -64,17 +64,7 @@ function buildSavedAccountsMenu(userId, selectedIdx = null) {
       }))
     );
 
-  const components = [new ActionRowBuilder().addComponents(menu)];
-  if (selectedIdx !== null && list[selectedIdx]) {
-    components.push(
-      new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('quick_login_saved_' + selectedIdx).setLabel('Login with Account').setEmoji('▶').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('delete_saved_' + selectedIdx).setLabel('Remove').setEmoji('🗑️').setStyle(ButtonStyle.Danger)
-      )
-    );
-  }
-
-  return { embeds: [embed], components, flags: 64 };
+  return { embeds: [embed], components: [new ActionRowBuilder().addComponents(menu)], flags: 64 };
 }
 
 function buildSparxDashboard(session) {
@@ -321,9 +311,13 @@ return;
 }
 if (interaction.isStringSelectMenu()) {
 if (interaction.customId === 'manage_saved_account_menu') {
-const idx = Number(interaction.values.at(0));
-return await interaction.update(buildSavedAccountsMenu(interaction.user.id, idx));
-}
+        const idx = Number(interaction.values.at(0));
+        const list = savedAccounts.get(interaction.user.id) || [];
+        const acc = list[idx];
+        if (!acc) return await interaction.reply({ content: 'Saved account not found.', flags: 64 });
+        await interaction.deferUpdate();
+        return await performSparxLogin(interaction, acc);
+      }
 const session = userSessions.get(interaction.user.id);
 if (!session) return await interaction.reply({ content: 'Session expired. Log in again!', flags: 64 });
 if (interaction.customId === 'select_homework_menu') {
