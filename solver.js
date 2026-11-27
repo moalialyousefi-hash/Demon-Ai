@@ -208,30 +208,23 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     await new Promise(r => setTimeout(r, 400));
     await dismissCookies(page);
 
-    const labelBoxes = await page.evaluate(() => {
-      function findLabelBox(regex) {
-        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
-        let node;
-        while ((node = walker.nextNode())) {
-          const txt = (node.innerText || "").trim();
-          if (regex.test(txt) && txt.length < 25) {
-            const r = node.getBoundingClientRect();
-            if (r.width > 20 && r.height > 8 && r.height < 40) {
-              return { x: r.left + 90, y: r.bottom + 22 };
-            }
-          }
-        }
-        return null;
-      }
-      return { user: findLabelBox(/^Username:?$/i), pass: findLabelBox(/^Password:?$/i) };
+    const passRect = await page.evaluate(() => {
+      const passEl = document.querySelector("input[type=password]");
+      if (!passEl) return null;
+      const r = passEl.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
     });
 
-    if (labelBoxes && labelBoxes.user && labelBoxes.pass) {
-      await realMouseClick(page, labelBoxes.user.x, labelBoxes.user.y);
+    if (passRect) {
+      await realMouseClick(page, passRect.x, passRect.y - 72);
+      await page.evaluate((x, y) => {
+        const el = document.elementFromPoint(x, y);
+        if (el && el.focus) el.focus();
+      }, passRect.x, passRect.y - 72);
       await new Promise(r => setTimeout(r, 150));
       await page.keyboard.type(username, { delay: 20 });
 
-      await realMouseClick(page, labelBoxes.pass.x, labelBoxes.pass.y);
+      await realMouseClick(page, passRect.x, passRect.y);
       await new Promise(r => setTimeout(r, 150));
       await page.keyboard.type(password, { delay: 20 });
     }
