@@ -393,7 +393,8 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           }
         }
 
-        const shot = await page.screenshot({ encoding: "base64" });
+        const shot = await page.screenshot({ encoding: "base64" }).catch(() => null);
+        if (!shot) { await new Promise(r => setTimeout(r, 1000)); continue; }
         const currentCode = await page.evaluate(() => {
           const m = document.body.innerText.match(/Bookwork code:\s*([A-Z0-9]+)/i);
           return m ? m.at(1) : null;
@@ -457,11 +458,11 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
         await new Promise(r => setTimeout(r, 700));
 
         const inputSel = "input:not([type=\"hidden\"]):not([type=\"checkbox\"]):not([type=\"radio\"])";
-        const inputVisible = await page.$(inputSel);
+        const inputVisible = await page.$(inputSel).catch(() => null);
         if (inputVisible) {
-          await page.click(inputSel, { clickCount: 3 });
-          await page.keyboard.press("Backspace");
-          await page.type(inputSel, answer, { delay: 30 });
+          await page.click(inputSel, { clickCount: 3 }).catch(() => {});
+          await page.keyboard.press("Backspace").catch(() => {});
+          await page.type(inputSel, answer, { delay: 30 }).catch(() => {});
         } else {
           await scanAndClick(page, (el, ans) => {
             if (el.tagName !== "BUTTON" && el.getAttribute("role") !== "button") return false;
