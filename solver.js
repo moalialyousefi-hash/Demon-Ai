@@ -320,128 +320,172 @@ await loginToSparx(page, session.school, session.username, session.password, ses
 await dmMsg.edit(
 buildProgressPayload(session, targetHw.title, 'Opening ' + targetHw.title + '...', tasks)
 );
-const task1AlreadyVisible = await page.evaluate(() => document.body && document.body.innerText.includes('Task 1')).catch(() => false);
-if (!task1AlreadyVisible) {
-await scanAndClick(page, (el, hwTitle) => {
-const t = (el.innerText || '').trim();
-return t.includes(hwTitle) && t.length < 150;
-}, targetHw.title);
-await new Promise(r => setTimeout(r, 800));
-}
-await scanAndClick(page, (el) => {
-const t = (el.innerText || '').trim();
-return /^Task\s*1\b/i.test(t) && t.length < 40;
-});
-await new Promise(r => setTimeout(r, 900));
-await scanAndClick(page, (el) => {
-const t = (el.innerText || '').trim();
-return (t === '1A' || t.startsWith('1A ') || el.getAttribute('href')?.includes('/task/')) && t.length < 60;
-});
-await new Promise(r => setTimeout(r, 1000));
-await dismissCookies(page);
-for (let i = 0; i < 6; i++) {
-tasks.at(0).done = i;
-const qCode = '1' + String.fromCharCode(65 + i);
-await dmMsg.edit(
-buildProgressPayload(session, targetHw.title, 'Solving ' + qCode + ' in Task 1...', tasks)
-);
-const isBookwork = await page.evaluate(() => document.body.innerText.includes('Bookwork check')).catch(() => false);
-if (isBookwork) {
-const codeNeeded = await page.evaluate(() => {
-const m = document.body.innerText.match(/Bookwork code:\s*([A-Z0-9]+)/i);
-return m ? m.at(1) : null;
-}).catch(() => null);
-if (codeNeeded && bookworkLog[codeNeeded]) {
-await scanAndClick(page, (el, ans) => el.tagName === 'BUTTON' && (el.innerText || '').includes(ans), bookworkLog[codeNeeded]);
-await new Promise(r => setTimeout(r, 800));
-continue;
-}
-}
-const shot = await page.screenshot({ encoding: 'base64' });
-const currentCode = await page.evaluate(() => {
-const m = document.body.innerText.match(/Bookwork code:\s*([A-Z0-9]+)/i);
-return m ? m.at(1) : null;
-}).catch(() => null);
-let answer = "";
-      if (process.env.GEMINI_API_KEY) {
-        const gUrl = Buffer.from("aHR0cHM6Ly9nZW5lcmF0aXZlbGFuZ3VhZ2UuZ29vZ2xlYXBpcy5jb20vdjFiZXRhL21vZGVscy9nZW1pbmktMi41LWZsYXNoOmdlbmVyYXRlQ29udGVudD9rZXk9","base64").toString() + process.env.GEMINI_API_KEY.trim();
-        const gRes = await fetch(gUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [
-              { text: "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths. Carefully read all numbers, diagrams, axes, units, and rounding instructions in the image. Solve step-by-step internally, then output ONLY the exact final value or exact multiple-choice button label to enter—never include working or extra words." },
-              { inline_data: { mime_type: "image/png", data: shot } }
-            ]}]
-          })
-        });
-        const gData = await gRes.json();
-        if (!gRes.ok) throw new Error("Gemini AI (" + gRes.status + "): " + (gData.error?.message || "Failed"));
-        answer = gData.candidates.at(0).content.parts.at(0).text.trim();
-      } else {
-        let res;
-        const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths. Carefully read all numbers, fractions, units, and rounding instructions. Solve step-by-step internally, then output ONLY the exact final value or exact multiple-choice button label to enter—never include working or extra words.";
-        try {
-          res = await groq.chat.completions.create({
-            model: "qwen/qwen3.8-27b",
-            messages: [
-              { role: "system", content: sysPrompt },
-              { role: "user", content: [{ type: "text", text: "Solve this Sparx Maths question accurately. Output ONLY the exact answer to enter or click." }, { type: "image_url", image_url: { url: "data:image/png;base64," + shot } }] }
-            ],
-            temperature: 0.1,
-            max_tokens: 120
+const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths. Carefully read all numbers, fractions, units, and rounding instructions. Solve step-by-step internally, then output ONLY the exact final value or exact multiple-choice button label to enter—never include working or extra words.";
+
+    for (let taskIdx = 0; taskIdx < 6; taskIdx++) {
+      const taskNum = taskIdx + 1;
+      if (taskIdx >= tasks.length) tasks.push({ done: 0, total: 6 });
+
+      const onTaskAlready = await page.evaluate((n) => {
+        const t = document.body ? document.body.innerText : "";
+        return t.includes(n + "A") && (t.includes("Answer") || t.includes("Bookwork code"));
+      }, taskNum).catch(() => false);
+
+      if (!onTaskAlready) {
+        const taskVisible = await page.evaluate((n) => document.body && document.body.innerText.includes("Task " + n), taskNum).catch(() => false);
+        if (!taskVisible) {
+          await scanAndClick(page, (el, hwTitle) => {
+            const t = (el.innerText || "").trim();
+            return t.includes(hwTitle) && t.length < 150;
+          }, targetHw.title);
+          await new Promise(r => setTimeout(r, 800));
+        }
+
+        const foundTask = await scanAndClick(page, (el, n) => {
+          const t = (el.innerText || "").trim();
+          return new RegExp("^Task\\s*" + n + "\\b", "i").test(t) && t.length < 40;
+        }, taskNum);
+        if (!foundTask && taskIdx > 0) break;
+
+        await new Promise(r => setTimeout(r, 900));
+        await scanAndClick(page, (el, n) => {
+          const t = (el.innerText || "").trim();
+          return (t === n + "A" || t.startsWith(n + "A ") || el.getAttribute("href")?.includes("/task/")) && t.length < 60;
+        }, taskNum);
+        await new Promise(r => setTimeout(r, 1000));
+        await dismissCookies(page);
+      }
+
+      for (let i = 0; i < 10; i++) {
+        const onSummary = await page.evaluate(() => {
+          const t = document.body ? document.body.innerText : "";
+          return /Task complete|Well done|Summary/i.test(t) && !t.includes("Bookwork code");
+        }).catch(() => false);
+        if (onSummary) break;
+
+        tasks.at(taskIdx).done = Math.min(i, tasks.at(taskIdx).total - 1);
+        const qCode = taskNum + String.fromCharCode(65 + i);
+
+        await dmMsg.edit(
+          buildProgressPayload(session, targetHw.title, "Solving " + qCode + " in Task " + taskNum + "...", tasks)
+        );
+
+        const isBookwork = await page.evaluate(() => document.body.innerText.includes("Bookwork check")).catch(() => false);
+        if (isBookwork) {
+          const codeNeeded = await page.evaluate(() => {
+            const m = document.body.innerText.match(/Bookwork code:\s*([A-Z0-9]+)/i);
+            return m ? m.at(1) : null;
+          }).catch(() => null);
+          if (codeNeeded && bookworkLog[codeNeeded]) {
+            await scanAndClick(page, (el, ans) => el.tagName === "BUTTON" && (el.innerText || "").includes(ans), bookworkLog[codeNeeded]);
+            await new Promise(r => setTimeout(r, 800));
+            continue;
+          }
+        }
+
+        const shot = await page.screenshot({ encoding: "base64" });
+        const currentCode = await page.evaluate(() => {
+          const m = document.body.innerText.match(/Bookwork code:\s*([A-Z0-9]+)/i);
+          return m ? m.at(1) : null;
+        }).catch(() => null);
+
+        let answer = "";
+        if (process.env.GEMINI_API_KEY) {
+          const gUrl = Buffer.from("aHR0cHM6Ly9nZW5lcmF0aXZlbGFuZ3VhZ2UuZ29vZ2xlYXBpcy5jb20vdjFiZXRhL21vZGVscy9nZW1pbmktMi41LWZsYXNoOmdlbmVyYXRlQ29udGVudD9rZXk9","base64").toString() + process.env.GEMINI_API_KEY.trim();
+          const gRes = await fetch(gUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [
+                { text: sysPrompt },
+                { inline_data: { mime_type: "image/png", data: shot } }
+              ]}]
+            })
           });
-        } catch (visionErr) {
-          const qText = await page.evaluate(() => document.body ? document.body.innerText.slice(0, 1500) : "").catch(() => "");
+          const gData = await gRes.json();
+          if (!gRes.ok) throw new Error("Gemini AI (" + gRes.status + "): " + (gData.error?.message || "Failed"));
+          answer = gData.candidates.at(0).content.parts.at(0).text.trim();
+        } else {
+          let res;
           try {
             res = await groq.chat.completions.create({
-              model: "llama-3.3-70b-versatile",
+              model: "qwen/qwen3.8-27b",
               messages: [
                 { role: "system", content: sysPrompt },
-                { role: "user", content: "Solve this Sparx Maths question from the page text and output ONLY the exact final answer:\n\n" + qText }
+                { role: "user", content: [{ type: "text", text: "Solve this Sparx Maths question accurately. Output ONLY the exact answer to enter or click." }, { type: "image_url", image_url: { url: "data:image/png;base64," + shot } }] }
               ],
               temperature: 0.1,
               max_tokens: 120
             });
-          } catch (apiErr) {
-            throw new Error("Groq AI (" + (apiErr.status || "ERR") + "): " + apiErr.message);
+          } catch (visionErr) {
+            const qText = await page.evaluate(() => document.body ? document.body.innerText.slice(0, 1500) : "").catch(() => "");
+            try {
+              res = await groq.chat.completions.create({
+                model: "llama-3.3-70b-versatile",
+                messages: [
+                  { role: "system", content: sysPrompt },
+                  { role: "user", content: "Solve this Sparx Maths question from the page text and output ONLY the exact final answer:\n\n" + qText }
+                ],
+                temperature: 0.1,
+                max_tokens: 120
+              });
+            } catch (apiErr) {
+              throw new Error("Groq AI (" + (apiErr.status || "ERR") + "): " + apiErr.message);
+            }
           }
+          answer = res.choices.at(0).message.content.trim();
         }
-        answer = res.choices.at(0).message.content.trim();
+
+        if (currentCode) bookworkLog[currentCode] = answer;
+        await new Promise(r => setTimeout(r, delayMs));
+
+        await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
+        await new Promise(r => setTimeout(r, 600));
+
+        const inputSel = "input[type=\"text\"], input[type=\"number\"]";
+        const inputVisible = await page.$(inputSel);
+        if (inputVisible) {
+          await page.click(inputSel, { clickCount: 3 });
+          await page.keyboard.press("Backspace");
+          await page.type(inputSel, answer, { delay: 30 });
+        } else {
+          await scanAndClick(page, (el, ans) => {
+            if (el.tagName !== "BUTTON" && el.getAttribute("role") !== "button") return false;
+            return (el.innerText || "").trim().toLowerCase() === ans.toLowerCase();
+          }, answer);
+        }
+
+        await scanAndClick(page, (el) => {
+          if (el.tagName !== "BUTTON") return false;
+          const t = (el.innerText || "").toLowerCase();
+          return ["submit", "check", "answer"].some(w => t.includes(w));
+        });
+        await new Promise(r => setTimeout(r, 1200));
+
+        await scanAndClick(page, (el) => {
+          if (el.tagName !== "BUTTON") return false;
+          const t = (el.innerText || "").toLowerCase();
+          return ["next", "continue"].some(w => t.includes(w));
+        });
+        await new Promise(r => setTimeout(r, 1000));
       }
-if (currentCode) bookworkLog[currentCode] = answer;
-await new Promise(r => setTimeout(r, delayMs));
-await scanAndClick(page, (el) => el.tagName === 'BUTTON' && (el.innerText || '').trim().toLowerCase() === 'answer');
-await new Promise(r => setTimeout(r, 600));
-const inputSel = 'input[type="text"], input[type="number"]';
-const inputVisible = await page.$(inputSel);
-if (inputVisible) {
-await page.click(inputSel, { clickCount: 3 });
-await page.keyboard.press('Backspace');
-await page.type(inputSel, answer, { delay: 30 });
-} else {
-await scanAndClick(page, (el, ans) => {
-if (el.tagName !== 'BUTTON' && el.getAttribute('role') !== 'button') return false;
-return (el.innerText || '').trim().toLowerCase() === ans.toLowerCase();
-}, answer);
-}
-await scanAndClick(page, (el) => {
-if (el.tagName !== 'BUTTON') return false;
-const t = (el.innerText || '').toLowerCase();
-return ['submit', 'check', 'answer'].some(w => t.includes(w));
-});
-await new Promise(r => setTimeout(r, 1200));
-await scanAndClick(page, (el) => {
-if (el.tagName !== 'BUTTON') return false;
-const t = (el.innerText || '').toLowerCase();
-return ['next', 'continue'].some(w => t.includes(w));
-});
-await new Promise(r => setTimeout(r, 1000));
-}
-tasks.at(0).done = 6;
-await dmMsg.edit(
-buildProgressPayload(session, targetHw.title, 'Completed ✅', tasks)
-);
+
+      tasks.at(taskIdx).done = tasks.at(taskIdx).total;
+      await dmMsg.edit(
+        buildProgressPayload(session, targetHw.title, "Completed Task " + taskNum + "! Moving to next task...", tasks)
+      );
+
+      await scanAndClick(page, (el) => {
+        if (el.tagName !== "BUTTON" && el.tagName !== "A") return false;
+        const t = (el.innerText || "").toLowerCase();
+        return ["continue", "next task", "back to homework", "summary"].some(w => t.includes(w));
+      });
+      await new Promise(r => setTimeout(r, 1200));
+    }
+
+    await dmMsg.edit(
+      buildProgressPayload(session, targetHw.title, "Completed ✅", tasks)
+    );
 } catch (err) {
 const errShot = page ? await page.screenshot().catch(() => null) : null;
 const files = errShot ? [new AttachmentBuilder(Buffer.from(errShot), { name: 'error.png' })] : [];
