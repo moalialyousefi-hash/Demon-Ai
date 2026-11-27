@@ -6,7 +6,7 @@ const fs = require('fs');
 const {
   Client, GatewayIntentBits, AttachmentBuilder, REST, Routes, SlashCommandBuilder,
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
-  ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder
+  ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, LabelBuilder
 } = require('discord.js');
 const { loginToSparx, runHomeworkInDM, getFastBrowser } = require('./solver');
 
@@ -229,25 +229,36 @@ return await interaction.reply({ embeds: [embed], components: [row] });
 }
 if (interaction.isButton()) {
 if (interaction.customId === 'open_sparx_modal' || interaction.customId === 'open_ms_modal') {
-const isMs = interaction.customId === 'open_ms_modal';
-const list = getSavedList(interaction.user.id);
-const saved = list.find(a => !!a.isMicrosoft === isMs) || { school: '', username: '', password: '' };
-const modal = new ModalBuilder()
-.setCustomId(isMs ? 'ms_login_modal' : 'sparx_login_modal')
-.setTitle(isMs ? 'Microsoft Sparx Login' : 'Sparx Maths Login');
-modal.addComponents(
-new ActionRowBuilder().addComponents(
-new TextInputBuilder().setCustomId('school_input').setLabel('School Name').setStyle(TextInputStyle.Short).setValue(saved.school).setRequired(true)
-),
-new ActionRowBuilder().addComponents(
-new TextInputBuilder().setCustomId('username_input').setLabel('Username or Email').setStyle(TextInputStyle.Short).setValue(saved.username).setRequired(true)
-),
-new ActionRowBuilder().addComponents(
-new TextInputBuilder().setCustomId('password_input').setLabel('Password').setStyle(TextInputStyle.Short).setValue(saved.password).setRequired(true)
-)
-);
-return await interaction.showModal(modal);
-}
+        const isMs = interaction.customId === 'open_ms_modal';
+        const list = getSavedList(interaction.user.id);
+        const saved = list.find(a => !!a.isMicrosoft === isMs) || { school: '', username: '', password: '', platform: 'maths' };
+        const modal = new ModalBuilder()
+          .setCustomId(isMs ? 'ms_login_modal' : 'sparx_login_modal')
+          .setTitle('Select Platform');
+
+        const platformSelect = new StringSelectMenuBuilder()
+          .setCustomId('platform_input')
+          .setPlaceholder('— none from this list —')
+          .addOptions([
+            { label: 'Sparx Maths', value: 'maths', emoji: '🇲', default: (saved.platform || 'maths') === 'maths' },
+            { label: 'Sparx Reader', value: 'reader', emoji: '🇷', default: saved.platform === 'reader' },
+            { label: 'Sparx Science', value: 'science', emoji: '🇸', default: saved.platform === 'science' }
+          ]);
+
+        modal.addLabelComponents(
+          new LabelBuilder().setLabel('Platform').setStringSelectMenuComponent(platformSelect),
+          new LabelBuilder().setLabel('School Name').setTextInputComponent(
+            new TextInputBuilder().setCustomId('school_input').setStyle(TextInputStyle.Short).setValue(saved.school).setRequired(true)
+          ),
+          new LabelBuilder().setLabel('Username or Email').setTextInputComponent(
+            new TextInputBuilder().setCustomId('username_input').setStyle(TextInputStyle.Short).setValue(saved.username).setRequired(true)
+          ),
+          new LabelBuilder().setLabel('Password').setTextInputComponent(
+            new TextInputBuilder().setCustomId('password_input').setStyle(TextInputStyle.Short).setValue(saved.password).setRequired(true)
+          )
+        );
+        return await interaction.showModal(modal);
+      }
 if (interaction.customId === 'saved_account_btn') {
 return await interaction.reply(buildSavedAccountsMenu(interaction.user.id));
 }
@@ -337,7 +348,8 @@ const isMicrosoft = interaction.customId === 'ms_login_modal';
 const school = interaction.fields.getTextInputValue('school_input');
 const username = interaction.fields.getTextInputValue('username_input');
 const password = interaction.fields.getTextInputValue('password_input');
-await performSparxLogin(interaction, { school, username, password, isMicrosoft });
+      const platform = (interaction.fields.getStringSelectValues ? interaction.fields.getStringSelectValues('platform_input')?.at(0) : null) || 'maths';
+await performSparxLogin(interaction, { school, username, password, isMicrosoft, platform });
 }
 } catch (err) {
 console.error('[INTERACTION ERROR]', err);
