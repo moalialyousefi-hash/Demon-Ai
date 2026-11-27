@@ -5,5 +5,8 @@
     "dotenv": "^18.0.10",
     "openai": "^7.62.0",
     "puppeteer": "^25.18.1"
+  },
+  "scripts": {
+    "postinstall": "npx puppeteer browsers install chrome"
   }
 }
