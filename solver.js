@@ -204,7 +204,16 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
   } else {
     state.step = 'Typing username & password';
     console.log('[STEP]', state.step);
-    await page.waitForSelector('input[type="password"]', { visible: true, timeout: 12000 });
+    await new Promise(r => setTimeout(r, 1000));
+    for (let w = 0; w < 4; w++) {
+      try {
+        await page.waitForSelector('input[type="password"]', { visible: true, timeout: 4000 });
+        break;
+      } catch (e) {
+        if (w === 3) throw e;
+        await new Promise(r => setTimeout(r, 600));
+      }
+    }
     await new Promise(r => setTimeout(r, 400));
     await dismissCookies(page);
 
