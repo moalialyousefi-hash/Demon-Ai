@@ -194,7 +194,7 @@ async function performSparxLogin(interaction, { school, username, password, isMi
   } finally {
     clearInterval(statusTicker);
     if (page) await page.close().catch(() => {});
-    if (browser) await (browser.disconnect ? browser.disconnect() : browser.close()).catch(() => {});
+    // keep sharedBrowser warm
   }
 }
 
