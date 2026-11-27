@@ -361,30 +361,39 @@ const currentCode = await page.evaluate(() => {
 const m = document.body.innerText.match(/Bookwork code:\s*([A-Z0-9]+)/i);
 return m ? m.at(1) : null;
 }).catch(() => null);
-let res;
-try {
-res = await groq.chat.completions.create({
-model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
-messages: [
-{
-role: 'system',
-content: 'You are an expert UK GCSE & KS3 Maths solver for Sparx Maths. Carefully read all numbers, diagrams, axes, units, and rounding instructions in the screenshot. Solve step-by-step internally, then output ONLY the exact final value or exact multiple-choice button label to enter—never include working or extra words.'
-},
-{
-role: 'user',
-content: [
-{ type: 'text', text: 'Solve this Sparx Maths question accurately. Output ONLY the exact answer to enter or click.' },
-{ type: 'image_url', image_url: { url: 'data:image/png;base64,' + shot } }
-]
-}
-],
-temperature: 0.1,
-max_tokens: 120
-});
-} catch (apiErr) {
-throw new Error('Groq AI (' + (apiErr.status || 'ERR') + '): ' + apiErr.message);
-}
-const answer = res.choices.at(0).message.content.trim();
+let answer = "";
+      if (process.env.GEMINI_API_KEY) {
+        const gUrl = Buffer.from("aHR0cHM6Ly9nZW5lcmF0aXZlbGFuZ3VhZ2UuZ29vZ2xlYXBpcy5jb20vdjFiZXRhL21vZGVscy9nZW1pbmktMi41LWZsYXNoOmdlbmVyYXRlQ29udGVudD9rZXk9","base64").toString() + process.env.GEMINI_API_KEY.trim();
+        const gRes = await fetch(gUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [
+              { text: "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths. Carefully read all numbers, diagrams, axes, units, and rounding instructions in the image. Solve step-by-step internally, then output ONLY the exact final value or exact multiple-choice button label to enter—never include working or extra words." },
+              { inline_data: { mime_type: "image/png", data: shot } }
+            ]}]
+          })
+        });
+        const gData = await gRes.json();
+        if (!gRes.ok) throw new Error("Gemini AI (" + gRes.status + "): " + (gData.error?.message || "Failed"));
+        answer = gData.candidates.at(0).content.parts.at(0).text.trim();
+      } else {
+        let res;
+        try {
+          res = await groq.chat.completions.create({
+            model: "meta-llama/llama-4-maverick-17b-128e-instruct",
+            messages: [
+              { role: "system", content: "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths. Carefully read all numbers, diagrams, axes, units, and rounding instructions in the screenshot. Solve step-by-step internally, then output ONLY the exact final value or exact multiple-choice button label to enter—never include working or extra words." },
+              { role: "user", content: [{ type: "text", text: "Solve this Sparx Maths question accurately. Output ONLY the exact answer to enter or click." }, { type: "image_url", image_url: { url: "data:image/png;base64," + shot } }] }
+            ],
+            temperature: 0.1,
+            max_tokens: 120
+          });
+        } catch (apiErr) {
+          throw new Error("Groq AI (" + (apiErr.status || "ERR") + "): " + apiErr.message);
+        }
+        answer = res.choices.at(0).message.content.trim();
+      }
 if (currentCode) bookworkLog[currentCode] = answer;
 await new Promise(r => setTimeout(r, delayMs));
 await scanAndClick(page, (el) => el.tagName === 'BUTTON' && (el.innerText || '').trim().toLowerCase() === 'answer');
