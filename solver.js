@@ -208,7 +208,33 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     await new Promise(r => setTimeout(r, 400));
     await dismissCookies(page);
 
-    const inputCoords = await page.evaluate(() => { const vis = Array.from(document.querySelectorAll("input")).filter(el => { const r = el.getBoundingClientRect(); return el.type !== "hidden" && r.width > 80 && r.height > 15; }); return vis.map(el => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }); }); if (inputCoords.length >= 2) { await realMouseClick(page, inputCoords.at(0).x, inputCoords.at(0).y); await new Promise(r => setTimeout(r, 150)); await page.keyboard.type(username, { delay: 20 }); await realMouseClick(page, inputCoords.at(1).x, inputCoords.at(1).y); await new Promise(r => setTimeout(r, 150)); await page.keyboard.type(password, { delay: 20 }); }
+    const labelBoxes = await page.evaluate(() => {
+      function findLabelBox(regex) {
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
+        let node;
+        while ((node = walker.nextNode())) {
+          const txt = (node.innerText || "").trim();
+          if (regex.test(txt) && txt.length < 25) {
+            const r = node.getBoundingClientRect();
+            if (r.width > 20 && r.height > 8 && r.height < 40) {
+              return { x: r.left + 90, y: r.bottom + 22 };
+            }
+          }
+        }
+        return null;
+      }
+      return { user: findLabelBox(/^Username:?$/i), pass: findLabelBox(/^Password:?$/i) };
+    });
+
+    if (labelBoxes && labelBoxes.user && labelBoxes.pass) {
+      await realMouseClick(page, labelBoxes.user.x, labelBoxes.user.y);
+      await new Promise(r => setTimeout(r, 150));
+      await page.keyboard.type(username, { delay: 20 });
+
+      await realMouseClick(page, labelBoxes.pass.x, labelBoxes.pass.y);
+      await new Promise(r => setTimeout(r, 150));
+      await page.keyboard.type(password, { delay: 20 });
+    }
 
     await new Promise(r => setTimeout(r, 350));
     const loginBtnBox = await page.evaluate(() => {
