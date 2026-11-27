@@ -262,6 +262,7 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
   state.step = 'Loading Homework dashboard';
   console.log('[STEP]', state.step);
   let lastQCode = "";
+  let answer = "";
       let sameQCount = 0;
        
       for (let i = 0; i < 10; i++) {
@@ -495,22 +496,34 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
         await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
         await new Promise(r => setTimeout(r, 700));
 
-        const boxPos = await page.evaluate(() => {
-          const inputs = Array.from(document.querySelectorAll("input")).filter(el => {
+        const visInputs = await page.evaluate(() => {
+          return Array.from(document.querySelectorAll("input")).filter(el => {
             const r = el.getBoundingClientRect();
             return el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio" && r.width > 30 && r.height > 12;
+          }).map(el => {
+            const r = el.getBoundingClientRect();
+            return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
           });
-          if (inputs.length === 0) return null;
-          const r = inputs.at(0).getBoundingClientRect();
-          return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-        }).catch(() => null);
+        }).catch(() => []);
 
-        if (boxPos) {
-          await realMouseClick(page, boxPos.x, boxPos.y);
+        if (visInputs.length >= 2 && answer.includes("/")) {
+          const [num, den] = answer.split("/");
+          await realMouseClick(page, visInputs.at(0).x, visInputs.at(0).y);
+          await new Promise(r => setTimeout(r, 120));
+          await page.keyboard.down("Control"); await page.keyboard.press("a"); await page.keyboard.up("Control");
+          await page.keyboard.press("Backspace");
+          await page.keyboard.type(num.trim(), { delay: 30 });
+
+          await realMouseClick(page, visInputs.at(1).x, visInputs.at(1).y);
+          await new Promise(r => setTimeout(r, 120));
+          await page.keyboard.down("Control"); await page.keyboard.press("a"); await page.keyboard.up("Control");
+          await page.keyboard.press("Backspace");
+          await page.keyboard.type(den.trim(), { delay: 30 });
+          await page.keyboard.press("Enter");
+        } else if (visInputs.length >= 1) {
+          await realMouseClick(page, visInputs.at(0).x, visInputs.at(0).y);
           await new Promise(r => setTimeout(r, 150));
-          await page.keyboard.down("Control");
-          await page.keyboard.press("a");
-          await page.keyboard.up("Control");
+          await page.keyboard.down("Control"); await page.keyboard.press("a"); await page.keyboard.up("Control");
           await page.keyboard.press("Backspace");
           await page.keyboard.type(answer, { delay: 30 });
           await page.keyboard.press("Enter");
