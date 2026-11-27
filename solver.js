@@ -434,8 +434,16 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
 
         await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
         await new Promise(r => setTimeout(r, 600));
-        const numBoxes = await page.evaluate(() => Array.from(document.querySelectorAll("input")).filter(el => { const r = el.getBoundingClientRect(); return el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio" && r.width > 30 && r.height > 12; }).length).catch(() => 1);
-        const boxHint = numBoxes >= 2 ? " CRITICAL: The answer box has TWO fields (top numerator and bottom denominator). You MUST output a fraction in the exact form numerator/denominator (e.g. 13/24), NEVER a single integer." : "";
+        var numBoxes = await page.evaluate(() => Array.from(document.querySelectorAll("input")).filter(el => { const r = el.getBoundingClientRect(); return el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio" && r.width > 30 && r.height > 12; }).length).catch(() => 1);
+        var boxHint = numBoxes >= 2 ? " CRITICAL: The answer box has TWO fields (top numerator and bottom denominator). You MUST output a fraction in the exact form numerator/denominator (e.g. 13/24), NEVER a single integer." : "";
+        await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
+        await new Promise(r => setTimeout(r, 600));
+        var numBoxes = await page.evaluate(() => Array.from(document.querySelectorAll("input")).filter(el => { const r = el.getBoundingClientRect(); return el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio" && r.width > 30 && r.height > 12; }).length).catch(() => 1);
+        var boxHint = numBoxes >= 2 ? " CRITICAL: The answer box has TWO fields (top numerator and bottom denominator). You MUST output a fraction in the exact form numerator/denominator (e.g. 13/24), NEVER a single integer." : "";
+        await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
+        await new Promise(r => setTimeout(r, 600));
+        var numBoxes = await page.evaluate(() => Array.from(document.querySelectorAll("input")).filter(el => { const r = el.getBoundingClientRect(); return el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio" && r.width > 30 && r.height > 12; }).length).catch(() => 1);
+        var boxHint = numBoxes >= 2 ? " CRITICAL: The answer box has TWO fields (top numerator and bottom denominator). You MUST output a fraction in the exact form numerator/denominator (e.g. 13/24), NEVER a single integer." : "";
         const shot = await page.screenshot({ encoding: "base64" }).catch(() => null);
         if (!shot) { await new Promise(r => setTimeout(r, 1000)); continue; }
         const currentCode = await page.evaluate(() => {
