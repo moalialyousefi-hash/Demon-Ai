@@ -262,7 +262,6 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
   state.step = 'Loading Homework dashboard';
   console.log('[STEP]', state.step);
   let lastQCode = "";
-  let answer = "";
       let sameQCount = 0;
        
       for (let i = 0; i < 10; i++) {
@@ -319,6 +318,7 @@ clearTimeout(timer);
 }
 }
 async function runHomeworkInDM(user, session, targetHw) {
+  let answer = "";
   let lastQCode = "";
   let sameQCount = 0;
 const delayMs = session.speed === 'quick' ? 2500 : session.speed === 'normal' ? 15000 : 40000;
@@ -438,7 +438,6 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           return m ? m.at(1) : null;
         }).catch(() => null);
 
-        let answer = "";
         if (process.env.GEMINI_API_KEY) {
           const gUrl = Buffer.from("aHR0cHM6Ly9nZW5lcmF0aXZlbGFuZ3VhZ2UuZ29vZ2xlYXBpcy5jb20vdjFiZXRhL21vZGVscy9nZW1pbmktMi41LWZsYXNoOmdlbmVyYXRlQ29udGVudD9rZXk9","base64").toString() + process.env.GEMINI_API_KEY.trim();
           const gRes = await fetch(gUrl, {
