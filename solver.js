@@ -320,25 +320,34 @@ await loginToSparx(page, session.school, session.username, session.password, ses
 await dmMsg.edit(
 buildProgressPayload(session, targetHw.title, 'Opening ' + targetHw.title + '...', tasks)
 );
-const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths. Carefully read all numbers, fractions, units, and rounding instructions. Solve step-by-step internally, then output ONLY the exact final value or exact multiple-choice button label to enter—never include working or extra words.";
+const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths. Carefully read all numbers, fractions, units, and rounding instructions. Solve step-by-step internally, then output ONLY the exact final value or exact multiple-choice button label to enter—never include working, units unless asked, or extra words.";
 
     for (let taskIdx = 0; taskIdx < 6; taskIdx++) {
       const taskNum = taskIdx + 1;
       if (taskIdx >= tasks.length) tasks.push({ done: 0, total: 6 });
 
-      const onTaskAlready = await page.evaluate((n) => {
+      const onQuestionAlready = await page.evaluate((n) => {
         const t = document.body ? document.body.innerText : "";
-        return t.includes(n + "A") && (t.includes("Answer") || t.includes("Bookwork code"));
+        return t.includes(n + "A") && (t.includes("Answer") || t.includes("Watch video"));
       }, taskNum).catch(() => false);
 
-      if (!onTaskAlready) {
-        const taskVisible = await page.evaluate((n) => document.body && document.body.innerText.includes("Task " + n), taskNum).catch(() => false);
+      if (!onQuestionAlready) {
+        let taskVisible = await page.evaluate((n) => document.body && new RegExp("Task\\s*" + n + "\\b", "i").test(document.body.innerText), taskNum).catch(() => false);
+        if (!taskVisible) {
+          await scanAndClick(page, (el) => {
+            const t = (el.innerText || "").trim();
+            return t === "Sparx Maths" || t === "< Sparx Maths" || el.getAttribute("href") === "/student/";
+          });
+          await new Promise(r => setTimeout(r, 1000));
+          taskVisible = await page.evaluate((n) => document.body && new RegExp("Task\\s*" + n + "\\b", "i").test(document.body.innerText), taskNum).catch(() => false);
+        }
+
         if (!taskVisible) {
           await scanAndClick(page, (el, hwTitle) => {
             const t = (el.innerText || "").trim();
             return t.includes(hwTitle) && t.length < 150;
           }, targetHw.title);
-          await new Promise(r => setTimeout(r, 800));
+          await new Promise(r => setTimeout(r, 900));
         }
 
         const foundTask = await scanAndClick(page, (el, n) => {
@@ -352,16 +361,17 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           const t = (el.innerText || "").trim();
           return (t === n + "A" || t.startsWith(n + "A ") || el.getAttribute("href")?.includes("/task/")) && t.length < 60;
         }, taskNum);
-        await new Promise(r => setTimeout(r, 1000));
+        await new Promise(r => setTimeout(r, 1100));
         await dismissCookies(page);
       }
 
       for (let i = 0; i < 10; i++) {
-        const onSummary = await page.evaluate(() => {
+        const taskFinished = await page.evaluate(() => {
           const t = document.body ? document.body.innerText : "";
-          return /Task complete|Well done|Summary/i.test(t) && !t.includes("Bookwork code");
+          const hasAnswerBtn = Array.from(document.querySelectorAll("button")).some(b => /^answer$|^submit$/i.test((b.innerText || "").trim()));
+          return !hasAnswerBtn && /Task complete|Well done!|You have completed this task|Back to homework/i.test(t);
         }).catch(() => false);
-        if (onSummary) break;
+        if (taskFinished) break;
 
         tasks.at(taskIdx).done = Math.min(i, tasks.at(taskIdx).total - 1);
         const qCode = taskNum + String.fromCharCode(65 + i);
@@ -439,11 +449,12 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           answer = res.choices.at(0).message.content.trim();
         }
 
+        answer = answer.replace(/^[`"']+|[`"'.]+$/g, "").trim();
         if (currentCode) bookworkLog[currentCode] = answer;
         await new Promise(r => setTimeout(r, delayMs));
 
         await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
-        await new Promise(r => setTimeout(r, 600));
+        await new Promise(r => setTimeout(r, 700));
 
         const inputSel = "input:not([type=\"hidden\"]):not([type=\"checkbox\"]):not([type=\"radio\"])";
         const inputVisible = await page.$(inputSel);
@@ -458,17 +469,18 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           }, answer);
         }
 
+        await new Promise(r => setTimeout(r, 300));
         await scanAndClick(page, (el) => {
           if (el.tagName !== "BUTTON") return false;
-          const t = (el.innerText || "").toLowerCase();
-          return ["submit", "check", "answer"].some(w => t.includes(w));
+          const t = (el.innerText || "").trim().toLowerCase();
+          return t === "submit" || t === "check";
         });
-        await new Promise(r => setTimeout(r, 1200));
+        await new Promise(r => setTimeout(r, 1300));
 
         await scanAndClick(page, (el) => {
           if (el.tagName !== "BUTTON") return false;
-          const t = (el.innerText || "").toLowerCase();
-          return ["next", "continue"].some(w => t.includes(w));
+          const t = (el.innerText || "").trim().toLowerCase();
+          return t === "next" || t === "continue" || t === "next question";
         });
         await new Promise(r => setTimeout(r, 1000));
       }
@@ -479,9 +491,8 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
       );
 
       await scanAndClick(page, (el) => {
-        if (el.tagName !== "BUTTON" && el.tagName !== "A") return false;
-        const t = (el.innerText || "").toLowerCase();
-        return ["continue", "next task", "back to homework", "summary"].some(w => t.includes(w));
+        const t = (el.innerText || "").trim().toLowerCase();
+        return t === "continue" || t === "back to homework" || t === "sparx maths" || t === "< sparx maths";
       });
       await new Promise(r => setTimeout(r, 1200));
     }
