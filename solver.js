@@ -5,7 +5,7 @@ const emojis = require('./emojis.json');
 
 const groq = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
-  baseURL: 'https://://://groq.com'
+  baseURL: 'https://api.groq.com/openai/v1'
 });
 
 const cookieJar = new Map();
