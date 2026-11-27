@@ -472,10 +472,20 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           await page.type(inputSel, answer, { delay: 30 }).catch(() => {});
           await page.keyboard.press("Enter").catch(() => {});
         } else {
-          await scanAndClick(page, (el, ans) => {
+          const clickedExact = await scanAndClick(page, (el, ans) => {
             if (el.tagName !== "BUTTON" && el.getAttribute("role") !== "button") return false;
             return (el.innerText || "").trim().toLowerCase() === ans.toLowerCase();
           }, answer);
+          if (!clickedExact) {
+            const parts = answer.includes(" ") ? answer.split(/\s+/) : answer.split("");
+            for (const part of parts) {
+              await scanAndClick(page, (el, p) => {
+                if (el.tagName !== "BUTTON" && el.getAttribute("role") !== "button") return false;
+                return (el.innerText || "").trim().toLowerCase() === p.toLowerCase();
+              }, part);
+              await new Promise(r => setTimeout(r, 200));
+            }
+          }
         }
 
         await new Promise(r => setTimeout(r, 300));
@@ -494,6 +504,12 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
         await new Promise(r => setTimeout(r, 1000));
       }
 
+      const stillOnQuestion = await page.evaluate(() => {
+        return Array.from(document.querySelectorAll("button")).some(b => /^answer$|^submit$/i.test((b.innerText || "").trim()));
+      }).catch(() => false);
+      if (stillOnQuestion) {
+        throw new Error("Could not finish Task " + taskNum + " — see screenshot of current question");
+      }
       tasks.at(taskIdx).done = tasks.at(taskIdx).total;
       await dmMsg.edit(
         buildProgressPayload(session, targetHw.title, "Completed Task " + taskNum + "! Moving to next task...", tasks)
