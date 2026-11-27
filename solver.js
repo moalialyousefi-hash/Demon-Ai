@@ -208,25 +208,7 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     await new Promise(r => setTimeout(r, 400));
     await dismissCookies(page);
 
-    const passBox = await page.evaluate(() => {
-      const passEl = document.querySelector("input[type=password]");
-      if (!passEl) return null;
-      const r = passEl.getBoundingClientRect();
-      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-    });
-    if (passBox) {
-      await realMouseClick(page, passBox.x, passBox.y);
-      await new Promise(r => setTimeout(r, 120));
-      await page.keyboard.down("Shift");
-      await page.keyboard.press("Tab");
-      await page.keyboard.up("Shift");
-      await new Promise(r => setTimeout(r, 120));
-      await page.keyboard.type(username, { delay: 20 });
-
-      await page.keyboard.press("Tab");
-      await new Promise(r => setTimeout(r, 120));
-      await page.keyboard.type(password, { delay: 20 });
-    }
+    const inputCoords = await page.evaluate(() => { const vis = Array.from(document.querySelectorAll("input")).filter(el => { const r = el.getBoundingClientRect(); return el.type !== "hidden" && r.width > 80 && r.height > 15; }); return vis.map(el => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }); }); if (inputCoords.length >= 2) { await realMouseClick(page, inputCoords.at(0).x, inputCoords.at(0).y); await new Promise(r => setTimeout(r, 150)); await page.keyboard.type(username, { delay: 20 }); await realMouseClick(page, inputCoords.at(1).x, inputCoords.at(1).y); await new Promise(r => setTimeout(r, 150)); await page.keyboard.type(password, { delay: 20 }); }
 
     await new Promise(r => setTimeout(r, 350));
     const loginBtnBox = await page.evaluate(() => {
