@@ -155,16 +155,21 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
 
   state.step = 'Selecting school from dropdown';
   console.log('[STEP]', state.step);
-  const clickedSchool = await scanAndClick(page, (el, schoolName) => {
-    if (el.tagName === 'INPUT' || el.querySelector('input')) return false;
-    const txt = (el.innerText || '').trim();
-    if (txt.length < 4 || txt.length > 140) return false;
-    return txt.toLowerCase().replace(/\s+/g, '').includes(schoolName.toLowerCase().replace(/\s+/g, ''));
-  }, school);
-
+  let clickedSchool = false;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    clickedSchool = await scanAndClick(page, (el, schoolName) => {
+      if (el.tagName === "INPUT" || el.querySelector("input")) return false;
+      const txt = (el.innerText || "").trim();
+      if (txt.length < 4 || txt.length > 140) return false;
+      const normTxt = txt.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const normSchool = schoolName.toLowerCase().replace(/[^a-z0-9]/g, "");
+      return normTxt.includes(normSchool);
+    }, school);
+    if (clickedSchool) break;
+    await new Promise(r => setTimeout(r, 400));
+  }
   if (!clickedSchool) {
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('Enter');
+    throw new Error("Could not find school matching: " + school + " — try typing the full school name with spaces (e.g. Ernest Bevin Academy)");
   }
   await new Promise(r => setTimeout(r, 300));
 
@@ -228,6 +233,10 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
         if (el && el.focus) el.focus();
       }, passRect.x, passRect.y - 72);
       await new Promise(r => setTimeout(r, 150));
+      await page.keyboard.down("Control");
+      await page.keyboard.press("a");
+      await page.keyboard.up("Control");
+      await page.keyboard.press("Backspace");
       await page.keyboard.type(username, { delay: 20 });
 
       await realMouseClick(page, passRect.x, passRect.y);
