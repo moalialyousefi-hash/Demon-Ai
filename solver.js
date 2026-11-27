@@ -208,38 +208,30 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     await new Promise(r => setTimeout(r, 400));
     await dismissCookies(page);
 
-    const boxes = await page.evaluate(() => {
+    const passBox = await page.evaluate(() => {
       const passEl = document.querySelector("input[type=password]");
       if (!passEl) return null;
-      const inputs = Array.from(document.querySelectorAll("input")).filter(el => {
-        const r = el.getBoundingClientRect();
-        return el.type !== "hidden" && r.width > 80 && r.height > 15;
-      });
-      const idx = inputs.indexOf(passEl);
-      const userEl = idx > 0 ? inputs.at(idx - 1) : inputs.at(0);
-      if (!userEl) return null;
-      const ur = userEl.getBoundingClientRect();
-      const pr = passEl.getBoundingClientRect();
-      return {
-        ux: ur.left + ur.width / 2,
-        uy: ur.top + ur.height / 2,
-        px: pr.left + pr.width / 2,
-        py: pr.top + pr.height / 2
-      };
+      const r = passEl.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
     });
-    if (boxes) {
-      await realMouseClick(page, boxes.ux, boxes.uy);
-      await new Promise(r => setTimeout(r, 150));
+    if (passBox) {
+      await realMouseClick(page, passBox.x, passBox.y);
+      await new Promise(r => setTimeout(r, 120));
+      await page.keyboard.down("Shift");
+      await page.keyboard.press("Tab");
+      await page.keyboard.up("Shift");
+      await new Promise(r => setTimeout(r, 120));
       await page.keyboard.type(username, { delay: 20 });
-      await realMouseClick(page, boxes.px, boxes.py);
-      await new Promise(r => setTimeout(r, 150));
+
+      await page.keyboard.press("Tab");
+      await new Promise(r => setTimeout(r, 120));
       await page.keyboard.type(password, { delay: 20 });
     }
 
     await new Promise(r => setTimeout(r, 350));
     const loginBtnBox = await page.evaluate(() => {
       const btn = Array.from(document.querySelectorAll("button")).find(b => /^log\s*in$|^sign\s*in$/i.test((b.innerText || "").trim()));
-      if (!btn || btn.disabled) return null;
+      if (!btn) return null;
       const r = btn.getBoundingClientRect();
       return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
     }).catch(() => null);
