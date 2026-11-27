@@ -10,32 +10,29 @@ const groq = new OpenAI({
 
 const cookieJar = new Map();
 
+let sharedBrowser = null;
 async function getFastBrowser() {
-  if (process.env.BROWSERLESS_TOKEN) {
-    const token = process.env.BROWSERLESS_TOKEN.trim();
-    const endpoints = [
-      'wss://production-lon.browserless.io?token=' + token,
-      'wss://production-sfo.browserless.io?token=' + token
-    ];
-    for (const ep of endpoints) {
-      try {
-        console.log('[STEP] Connecting to Browserless:', ep.split('?'));
-        return await Promise.race([
-          puppeteer.connect({ browserWSEndpoint: ep }),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('4s timeout')), 4000))
-        ]);
-      } catch (e) {
-        console.log('[BROWSERLESS SKIP]', ep.split('?'), e.message);
-      }
-    }
+  if (sharedBrowser && sharedBrowser.isConnected()) {
+    return sharedBrowser;
   }
-  console.log('[STEP] Launching local Chromium...');
-  return await puppeteer.launch({
+  console.log("[STEP] Launching warm Chromium...");
+  sharedBrowser = await puppeteer.launch({
     headless: true,
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     protocolTimeout: 45000,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-zygote']
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--no-zygote",
+      "--disable-extensions",
+      "--disable-background-networking",
+      "--renderer-process-limit=2"
+    ]
   });
+  sharedBrowser.on("disconnected", () => { sharedBrowser = null; });
+  return sharedBrowser;
 }
 
 async function realMouseClick(page, x, y) {
@@ -257,6 +254,7 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
   console.log('[STEP]', state.step);
   let lastQCode = "";
       let sameQCount = 0;
+       
       for (let i = 0; i < 10; i++) {
     await new Promise(r => setTimeout(r, 700));
     const ready = await page.evaluate(() => {
@@ -323,7 +321,7 @@ buildProgressPayload(session, targetHw.title, 'Connecting to Sparx Maths...', ta
 );
 let browser;
 let page;
-const bookworkLog = {};
+const bookworkLog = {}; 
 try {
 browser = await getFastBrowser();
 page = await browser.newPage();
@@ -376,6 +374,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
         await dismissCookies(page);
       }
 
+      
       for (let i = 0; i < 10; i++) {
         const taskFinished = await page.evaluate(() => {
           const t = document.body ? document.body.innerText : "";
@@ -567,7 +566,7 @@ buildProgressPayload(session, targetHw.title, 'Stopped: ' + err.message, tasks, 
 );
 } finally {
 if (page) await page.close().catch(() => {});
-if (browser) await (browser.disconnect ? browser.disconnect() : browser.close()).catch(() => {});
+// keep sharedBrowser warm for instant next tab
 }
 }
 module.exports = { loginToSparx, runHomeworkInDM, getFastBrowser };
