@@ -432,6 +432,10 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           }
         }
 
+        await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
+        await new Promise(r => setTimeout(r, 600));
+        const numBoxes = await page.evaluate(() => Array.from(document.querySelectorAll("input")).filter(el => { const r = el.getBoundingClientRect(); return el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio" && r.width > 30 && r.height > 12; }).length).catch(() => 1);
+        const boxHint = numBoxes >= 2 ? " CRITICAL: The answer box has TWO fields (top numerator and bottom denominator). You MUST output a fraction in the exact form numerator/denominator (e.g. 13/24), NEVER a single integer." : "";
         const shot = await page.screenshot({ encoding: "base64" }).catch(() => null);
         if (!shot) { await new Promise(r => setTimeout(r, 1000)); continue; }
         const currentCode = await page.evaluate(() => {
@@ -446,7 +450,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               contents: [{ parts: [
-                { text: sysPrompt },
+                { text: sysPrompt + boxHint },
                 { inline_data: { mime_type: "image/png", data: shot } }
               ]}]
             })
@@ -460,7 +464,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
             res = await groq.chat.completions.create({
               model: "qwen/qwen3.8-27b",
               messages: [
-                { role: "system", content: sysPrompt },
+                { role: "system", content: sysPrompt + boxHint },
                 { role: "user", content: [{ type: "text", text: "Solve this Sparx Maths question accurately. Output ONLY the exact answer to enter or click." }, { type: "image_url", image_url: { url: "data:image/png;base64," + shot } }] }
               ],
               temperature: 0.1,
@@ -475,7 +479,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
               res = await groq.chat.completions.create({
                 model: "llama-3.3-70b-versatile",
                 messages: [
-                  { role: "system", content: sysPrompt },
+                  { role: "system", content: sysPrompt + boxHint },
                   { role: "user", content: "Solve this Sparx Maths question from the page text and output ONLY the exact final answer:\n\n" + qText }
                 ],
                 temperature: 0.1,
