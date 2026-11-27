@@ -474,13 +474,25 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
         await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
         await new Promise(r => setTimeout(r, 700));
 
-        const inputSel = "input:not([type=\"hidden\"]):not([type=\"checkbox\"]):not([type=\"radio\"])";
-        const inputVisible = await page.$(inputSel).catch(() => null);
-        if (inputVisible) {
-          await page.click(inputSel, { clickCount: 3 }).catch(() => {});
-          await page.keyboard.press("Backspace").catch(() => {});
-          await page.type(inputSel, answer, { delay: 30 }).catch(() => {});
-          await page.keyboard.press("Enter").catch(() => {});
+        const boxPos = await page.evaluate(() => {
+          const inputs = Array.from(document.querySelectorAll("input")).filter(el => {
+            const r = el.getBoundingClientRect();
+            return el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio" && r.width > 30 && r.height > 12;
+          });
+          if (inputs.length === 0) return null;
+          const r = inputs.at(0).getBoundingClientRect();
+          return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        }).catch(() => null);
+
+        if (boxPos) {
+          await realMouseClick(page, boxPos.x, boxPos.y);
+          await new Promise(r => setTimeout(r, 150));
+          await page.keyboard.down("Control");
+          await page.keyboard.press("a");
+          await page.keyboard.up("Control");
+          await page.keyboard.press("Backspace");
+          await page.keyboard.type(answer, { delay: 30 });
+          await page.keyboard.press("Enter");
         } else {
           const clickedExact = await scanAndClick(page, (el, ans) => {
             if (el.tagName !== "BUTTON" && el.getAttribute("role") !== "button") return false;
