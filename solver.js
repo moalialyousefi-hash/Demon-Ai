@@ -208,21 +208,33 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     await new Promise(r => setTimeout(r, 400));
     await dismissCookies(page);
 
-    await page.evaluate(() => {
-      const passEl = document.querySelector('input[type="password"]');
-      const formInputs = passEl && passEl.form ? Array.from(passEl.form.querySelectorAll('input')) : Array.from(document.querySelectorAll('input'));
-      const userEl = formInputs.find(el => el !== passEl && el.type !== 'hidden');
-      if (userEl) { userEl.focus(); userEl.click(); }
+    const boxes = await page.evaluate(() => {
+      const passEl = document.querySelector("input[type=password]");
+      if (!passEl) return null;
+      const inputs = Array.from(document.querySelectorAll("input")).filter(el => {
+        const r = el.getBoundingClientRect();
+        return el.type !== "hidden" && r.width > 80 && r.height > 15;
+      });
+      const idx = inputs.indexOf(passEl);
+      const userEl = idx > 0 ? inputs.at(idx - 1) : inputs.at(0);
+      if (!userEl) return null;
+      const ur = userEl.getBoundingClientRect();
+      const pr = passEl.getBoundingClientRect();
+      return {
+        ux: ur.left + ur.width / 2,
+        uy: ur.top + ur.height / 2,
+        px: pr.left + pr.width / 2,
+        py: pr.top + pr.height / 2
+      };
     });
-    await new Promise(r => setTimeout(r, 150));
-    await page.keyboard.type(username, { delay: 20 });
-
-    await page.evaluate(() => {
-      const passEl = document.querySelector('input[type="password"]');
-      if (passEl) { passEl.focus(); passEl.click(); }
-    });
-    await new Promise(r => setTimeout(r, 150));
-    await page.keyboard.type(password, { delay: 20 });
+    if (boxes) {
+      await realMouseClick(page, boxes.ux, boxes.uy);
+      await new Promise(r => setTimeout(r, 150));
+      await page.keyboard.type(username, { delay: 20 });
+      await realMouseClick(page, boxes.px, boxes.py);
+      await new Promise(r => setTimeout(r, 150));
+      await page.keyboard.type(password, { delay: 20 });
+    }
 
     await new Promise(r => setTimeout(r, 350));
     const submitted = await page.evaluate(() => {
