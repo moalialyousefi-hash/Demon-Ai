@@ -39,7 +39,7 @@ async function getFastBrowser() {
 }
 
 async function realMouseClick(page, x, y) {
-  await page.mouse.move(x, y, { steps: 5 });
+  await page.mouse.move(x, y, { steps: 12 });
   await new Promise(r => setTimeout(r, 60));
   await page.mouse.down();
   await new Promise(r => setTimeout(r, 40));
@@ -237,15 +237,17 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     }
 
     await new Promise(r => setTimeout(r, 350));
-    const submitted = await page.evaluate(() => {
-      const passEl = document.querySelector('input[type="password"]');
-      const btn = passEl && passEl.form
-        ? passEl.form.querySelector('button[type="submit"], button')
-        : Array.from(document.querySelectorAll('button')).find(b => /log\s*in|sign\s*in/i.test(b.innerText || ''));
-      if (btn && !btn.disabled) { btn.click(); return true; }
-      return false;
-    }).catch(() => false);
-    if (!submitted) await page.keyboard.press('Enter');
+    const loginBtnBox = await page.evaluate(() => {
+      const btn = Array.from(document.querySelectorAll("button")).find(b => /^log\s*in$|^sign\s*in$/i.test((b.innerText || "").trim()));
+      if (!btn || btn.disabled) return null;
+      const r = btn.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    }).catch(() => null);
+    if (loginBtnBox) {
+      await realMouseClick(page, loginBtnBox.x, loginBtnBox.y);
+    } else {
+      await page.keyboard.press("Enter");
+    }
     await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 12000 }).catch(() => {});
   }
 
