@@ -342,7 +342,7 @@ await loginToSparx(page, session.school, session.username, session.password, ses
 await dmMsg.edit(
 buildProgressPayload(session, targetHw.title, 'Opening ' + targetHw.title + '...', tasks)
 );
-const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths. Carefully read all numbers, fractions, units, and rounding instructions. Always write fractions with a forward slash like 13/24 (never 1324). Solve step-by-step internally, then output ONLY the exact final value or exact multiple-choice button label to enter—never include working, units unless asked, or extra words.";
+const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths. Carefully read all numbers, fractions, units, and rounding instructions. Always write fractions with a forward slash like 13/24 (never 1324). Always write fractions with a forward slash like 13/24 (never 1324). Solve step-by-step internally, then output ONLY the exact final value or exact multiple-choice button label to enter—never include working, units unless asked, or extra words.";
 
     for (let taskIdx = 0; taskIdx < 6; taskIdx++) {
       const taskNum = taskIdx + 1;
