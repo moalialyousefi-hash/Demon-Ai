@@ -213,7 +213,7 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
       if (!passEl) return null;
       const r = passEl.getBoundingClientRect();
       return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-    });
+    }).catch(() => null);
 
     if (passRect) {
       await realMouseClick(page, passRect.x, passRect.y - 72);
