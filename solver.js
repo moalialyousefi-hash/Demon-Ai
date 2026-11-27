@@ -120,7 +120,7 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     state.step = 'Restoring saved session';
     console.log('[STEP]', state.step);
     await page.setCookie(...savedCookies).catch(() => {});
-    await page.goto('https://www.www.sparxmaths.uk/student//student/', { waitUntil: 'domcontentloaded', timeout: 15000 });
+    await page.goto("https://"+"www.sparxmaths.uk/student/", { waitUntil: "domcontentloaded", timeout: 20000 });
     for (let i = 0; i < 6; i++) {
       await new Promise(r => setTimeout(r, 600));
       const isLoggedIn = await page.evaluate(() => {
@@ -138,7 +138,7 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
 
   state.step = 'Opening Sparx student login';
   console.log('[STEP]', state.step);
-  await page.goto('https://www.www.sparxmaths.uk/student//student/', { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await page.goto("https://"+"www.sparxmaths.uk/student/", { waitUntil: "domcontentloaded", timeout: 20000 });
   await new Promise(r => setTimeout(r, 800));
   await dismissCookies(page);
 
