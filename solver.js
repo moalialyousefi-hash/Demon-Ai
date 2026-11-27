@@ -12,7 +12,7 @@ const cookieJar = new Map();
 
 let sharedBrowser = null;
 async function getFastBrowser() {
-  if (sharedBrowser && sharedBrowser.isConnected()) {
+  if (sharedBrowser && sharedBrowser.connected) {
     return sharedBrowser;
   }
   console.log("[STEP] Launching warm Chromium...");
