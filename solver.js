@@ -538,44 +538,55 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           answer = gData.candidates.at(0).content.parts.at(0).text.trim();
         } else {
           let res;
-          try {
-            const modelsList = await groq.models.list().catch(() => ({ data: [] }));
-            var allModels = (modelsList.data || []).map(m => m.id).filter(id => !/whisper|tts|guard|distil/i.test(id));
-            var allModels = (modelsList.data || []).map(m => m.id).filter(id => !/whisper|tts|guard|distil/i.test(id));
-            var allModels = (modelsList.data || []).map(m => m.id).filter(id => !/whisper|tts|guard|distil/i.test(id));
-            const visionModel = (modelsList.data || []).map(m => m.id).find(id => /vision|scout|maverick|qwen.*vl|pixtral|llava/i.test(id)) || "meta-llama/llama-4-scout-17b-16e-instruct";
+          const modelsList = await groq.models.list().catch(() => ({ data: [] }));
+          var allModels = (modelsList.data || []).map(m => m.id).filter(id => !/whisper|tts|guard|distil/i.test(id));
+          const visionModel = allModels.find(id => /vision|scout|maverick|qwen.*vl|pixtral|llava/i.test(id));
+          const chatModel = allModels.find(id => /70b|32b|qwen|llama|gpt/i.test(id)) || allModels.at(0) || "llama-3.1-8b-instant";
+
+          const qText = await page.evaluate(() => {
+            const clone = document.body.cloneNode(true);
+            clone.querySelectorAll("img[alt]").forEach(img => {
+              if (img.alt) img.replaceWith(" " + img.alt + " ");
+            });
+            return (clone.innerText || "").replace(/(\d+)\s*\n\s*(\d+)/g, "$1/$2").replace(/Enter number/gi, "").slice(0, 1800);
+          }).catch(() => "");
+
+          const jsonPrompt = "You are a UK GCSE/KS3 Sparx Maths solver. Solve step-by-step and return ONLY valid JSON in the exact shape: {\"steps\": \"brief calculation\", \"answer\": \"exact final value\"}. " + boxHint;
+
+          res = null;
+          if (visionModel) {
             res = await groq.chat.completions.create({
               model: visionModel,
+              response_format: { type: "json_object" },
               messages: [
-                { role: "system", content: sysPrompt + boxHint },
-                { role: "user", content: [{ type: "text", text: "Solve this Sparx Maths question carefully. Do the math step by step internally, then show 2 short lines of calculation, then end with FINAL: <exact answer> (e.g. FINAL: 13/24)." }, { type: "image_url", image_url: { url: "data:image/png;base64," + shot } }] }
+                { role: "system", content: jsonPrompt },
+                { role: "user", content: [{ type: "text", text: "Solve this Sparx Maths question accurately in JSON." }, { type: "image_url", image_url: { url: "data:image/png;base64," + shot } }] }
               ],
               temperature: 0.0,
-              max_tokens: 220
-            });
-          } catch (visionErr) {
-            const qText = await page.evaluate(() => {
-              const clone = document.body.cloneNode(true);
-              clone.querySelectorAll("img[alt]").forEach(img => {
-                if (img.alt) img.replaceWith(" " + img.alt + " ");
-              });
-              return (clone.innerText || "").replace(/(\d+)\s*\n\s*(\d+)/g, "$1/$2").replace(/Enter number/gi, "").slice(0, 1800);
-            }).catch(() => "");
-            try {
-              res = await groq.chat.completions.create({
-                model: allModels.find(id => /70b|32b|qwen|llama|gpt/i.test(id)) || allModels.at(0) || "llama-3.1-8b-instant",
-                messages: [
-                  { role: "system", content: sysPrompt + boxHint },
-                  { role: "user", content: "Solve this UK GCSE/KS3 Sparx Maths question accurately. Output ONLY the exact final number or fraction (never repeat digits like 11111111):\n\n" + qText }
-                ],
-                temperature: 0.0,
-                max_tokens: 40
-              });
-            } catch (apiErr) {
-              throw new Error("Groq AI (" + (apiErr.status || "ERR") + "): " + apiErr.message);
-            }
+              max_tokens: 250
+            }).catch(() => null);
           }
-          answer = res.choices.at(0).message.content.trim();
+
+          if (!res) {
+            res = await groq.chat.completions.create({
+              model: chatModel,
+              response_format: { type: "json_object" },
+              messages: [
+                { role: "system", content: jsonPrompt },
+                { role: "user", content: "Solve this Sparx Maths question from the extracted text and return JSON:\n\n" + qText }
+              ],
+              temperature: 0.0,
+              max_tokens: 250
+            });
+          }
+
+          const rawContent = res.choices.at(0).message.content.trim();
+          try {
+            const parsed = JSON.parse(rawContent);
+            answer = String(parsed.answer || "").trim();
+          } catch (e) {
+            answer = rawContent;
+          }
         }
 
         answer = answer.replace(/^[`"']+|[`"'.]+$/g, "").trim();
