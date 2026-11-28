@@ -456,7 +456,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
         await new Promise(r => setTimeout(r, 900));
         await scanAndClick(page, (el, n) => {
           const t = (el.innerText || "").trim();
-          return (t === n + "A" || t.startsWith(n + "A ") || el.getAttribute("href")?.includes("/task/")) && t.length < 60;
+          return false;
         }, taskNum);
         await new Promise(r => setTimeout(r, 1100));
         await dismissCookies(page);
@@ -508,7 +508,8 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
         }
         const letterIdx = qCode.charCodeAt(qCode.length - 1) - 65;
         if (letterIdx >= 0 && letterIdx < 12) {
-          tasks.at(taskIdx).done = Math.min(letterIdx, tasks.at(taskIdx).total - 1);
+          const realIdx = Math.max(0, Math.min(tasks.length - 1, taskNum - 1));
+          if (tasks.at(realIdx)) tasks.at(realIdx).done = Math.min(letterIdx, tasks.at(realIdx).total - 1);
         }
 
         await dmMsg.edit(
@@ -816,7 +817,9 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
       if (onFirstQStill) {
         throw new Error("Stuck on " + taskNum + "A — see screenshot to check why Answer/Submit did not advance");
       }
-      tasks.at(taskIdx).done = tasks.at(taskIdx).total;
+      const actuallyDone = await page.evaluate(() => /Task complete|Well done!|You have completed this task/i.test(document.body ? document.body.innerText : "")).catch(() => false);
+        const doneIdx = Math.max(0, Math.min(tasks.length - 1, taskNum - 1));
+        if (actuallyDone && tasks.at(doneIdx)) tasks.at(doneIdx).done = tasks.at(doneIdx).total;
       await dmMsg.edit(
         buildProgressPayload(session, targetHw.title, "Completed Task " + taskNum + "! Moving to next task...", tasks)
       );
