@@ -231,31 +231,33 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.isChatInputCommand() && interaction.commandName === 'setup') {
       const avatarUrl = client.user.displayAvatarURL();
       const setupContainer = new ContainerBuilder()
+        .setAccentColor(0xED4245)
         .addSectionComponents(
           new SectionBuilder()
             .addTextDisplayComponents(
               new TextDisplayBuilder().setContent(
-                "## Demon AI Learning Platform\n" +
-                "Your gateway to automated Sparx homework assistance.\n" +
-                "Our AI-powered solver handles your tasks across Sparx, Reader, and Science.\n" +
-                "Press the `Join Queue` button below to connect your Sparx account and get started.\n\n" +
-                "__**Notes**__\n" +
-                "• Automated step-by-step solving for all your Sparx questions\n" +
-                "• Real-time progress bars & live updates sent directly to your DMs\n" +
-                "• Supports both standard Sparx and Microsoft 365 school logins\n" +
-                "• Fast, reliable, and private automated homework sessions"
+                "# 🔥 Demon AI • Sparx Autocompleter\n" +
+                "Your ultimate **24/7 AI-powered** Sparx homework assistant.\n" +
+                "Built for speed, accuracy, and hands-free completion across **Sparx Maths, Reader & Science**.\n" +
+                "Hit `▸ Join Queue` below to link your account and start completing tasks automatically.\n\n" +
+                "__**⚡ Features & Notes**__\n" +
+                "• **Smart Vision AI** — Solves fractions, algebra, and multi-step questions automatically\n" +
+                "• **Auto Bookwork Bypass** — Logs every answer & clears bookwork checks effortlessly\n" +
+                "• **Live DM Dashboard** — Real-time progress bars and speed controls in your DMs\n" +
+                "• **One-Click Saved Logins** — Works with both standard Sparx & Microsoft 365 accounts"
               )
             )
             .setThumbnailAccessory(new ThumbnailBuilder().setURL(avatarUrl))
         )
+        .addSeparatorComponents(new SeparatorBuilder())
         .addActionRowComponents(
           new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('join_queue_btn').setLabel('▷ Join Queue').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('saved_account_btn').setLabel('▷ Join Queue With Saved Details').setStyle(ButtonStyle.Success)
+            new ButtonBuilder().setCustomId('join_queue_btn').setLabel('▸ Join Queue').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('saved_account_btn').setLabel('▸ Join Queue With Saved Details').setStyle(ButtonStyle.Danger)
           ),
           new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('help_btn').setLabel('Help & FAQ').setEmoji('❓').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('saved_account_btn_manage').setLabel('Manage Accounts').setEmoji('👥').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId('help_btn').setLabel('Help & FAQ').setEmoji('❓').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('saved_account_btn_manage').setLabel('Manage Accounts').setEmoji('👥').setStyle(ButtonStyle.Danger)
           )
         );
 
