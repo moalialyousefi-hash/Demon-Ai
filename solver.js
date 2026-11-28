@@ -643,7 +643,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
                 "X-Title": "Demon-Ai"
               },
               body: JSON.stringify({
-                models: ["google/gemini-2.0-flash-exp:free", "qwen/qwen2.5-vl-72b-instruct:free", "openrouter/free"],
+                models: ["qwen/qwen2.5-vl-72b-instruct:free", "meta-llama/llama-3.2-11b-vision-instruct:free", "openrouter/free"],
                 messages: [{
                   role: "user",
                   content: [
@@ -668,6 +668,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
 
         answer = answer.replace(/^[\`"\x27]+|[\`"\x27.]+$/g, "").trim();
           if (!answer) {
+              console.log("EMPTY AI RAW:", JSON.stringify(orJson || {}));
             const nextTab = qCode.replace(/([A-Z])$/, (_, ch) => String.fromCharCode(ch.charCodeAt(0) + 1));
             const skipped = await scanAndClick(page, (el, target) => {
               const r = el.getBoundingClientRect();
