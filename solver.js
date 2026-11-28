@@ -542,7 +542,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           answer = gData.candidates.at(0).content.parts.at(0).text.trim();
         } else {
           let res;
-          const modelsList = await groq.models.list().catch(() => ({ data: [] }));
+          const modelsList = await aiProvider.models.list().catch(() => ({ data: [] }));
           var allModels = (modelsList.data || []).map(m => m.id).filter(id => !/whisper|tts|guard|distil/i.test(id));
           const visionModel = process.env.OPENROUTER_API_KEY ? "qwen/qwen2.5-vl-72b-instruct:free" : allModels.find(id => /vision|scout|maverick|qwen.*vl|pixtral|llava/i.test(id));
           const chatModel = process.env.OPENROUTER_API_KEY ? "deepseek/deepseek-r1:free" : (allModels.find(id => /70b|32b|qwen|llama|gpt/i.test(id)) || allModels.at(0) || "llama-3.1-8b-instant");
@@ -559,7 +559,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
 
           res = null;
           if (visionModel) {
-            res = await groq.chat.completions.create({
+            res = await aiProvider.chat.completions.create({
               model: visionModel,
               
               messages: [
@@ -572,7 +572,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           }
 
           if (!res) {
-            res = await groq.chat.completions.create({
+            res = await aiProvider.chat.completions.create({
               model: chatModel,
               
               messages: [
