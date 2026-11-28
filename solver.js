@@ -542,6 +542,11 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           answer = gData.candidates.at(0).content.parts.at(0).text.trim();
         } else {
           let res;
+          const qText = await page.evaluate(() => {
+            const clone = document.body.cloneNode(true);
+            clone.querySelectorAll("img[alt]").forEach(img => { if (img.alt) img.replaceWith(" " + img.alt + " "); });
+            return (clone.innerText || "").replace(/(\d+)\s*\n\s*(\d+)/g, "$1/$2").slice(0, 1800);
+          }).catch(() => "");
           const promptText = "You are a UK GCSE/KS3 Sparx Maths solver. Look at the question image and text carefully, show 2 short lines of calculation, then end with FINAL: <exact answer> (e.g. FINAL: 13/24). " + boxHint + "\n\nQuestion text: " + qText;
           let rawContent = "";
 
