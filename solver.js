@@ -447,11 +447,34 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           await new Promise(r => setTimeout(r, 900));
         }
 
-        const foundTask = await scanAndClick(page, (el, n) => {
-          const t = (el.innerText || "").trim();
-          return new RegExp("^Task\\s*" + n + "\\b", "i").test(t) && t.length < 40;
-        }, taskNum);
-        if (!foundTask && taskIdx > 0) break;
+        const foundTask = await page.evaluate((n) => {
+            const labels = Array.from(document.querySelectorAll("div, span, p, h1, h2, h3, h4, a, button")).filter(el => {
+              const t = (el.innerText || "").trim();
+              return new RegExp("^Task\\s*" + n + "$", "i").test(t) && el.getBoundingClientRect().width > 0;
+            });
+            const label = labels.at(0);
+            if (!label) return false;
+            const lr = label.getBoundingClientRect();
+            const rowText = (label.parentElement?.parentElement?.innerText || label.parentElement?.innerText || "");
+            if (/\b100%\b|Completed/i.test(rowText)) return "DONE";
+            const actionBtn = Array.from(document.querySelectorAll("a, button, div, span")).find(el => {
+              const r = el.getBoundingClientRect();
+              const t = (el.innerText || "").trim().toLowerCase();
+              return r.width > 50 && r.height > 20 && Math.abs((r.top + r.height / 2) - (lr.top + lr.height / 2)) < 38 &&
+                     (t.startsWith("start") || t.startsWith("continue")) && el.children.length <= 2;
+            });
+            if (actionBtn) {
+              actionBtn.click();
+              return true;
+            }
+            label.click();
+            return true;
+          }, taskNum).catch(() => false);
+          if (foundTask === "DONE") {
+            if (tasks.at(taskIdx)) tasks.at(taskIdx).done = tasks.at(taskIdx).total;
+            continue;
+          }
+          if (!foundTask && taskIdx > 0) break;
 
         await new Promise(r => setTimeout(r, 900));
         await scanAndClick(page, (el, n) => {
