@@ -572,7 +572,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
                 "X-Title": "Demon-Ai"
               },
               body: JSON.stringify({
-                model: "openrouter/free",
+                models: ["google/gemini-2.0-flash-exp:free", "qwen/qwen2.5-vl-72b-instruct:free", "openrouter/free"],
                 messages: [{
                   role: "user",
                   content: [
