@@ -1,14 +1,16 @@
 {
+  "name": "demon-ai",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "postinstall": "npx puppeteer browsers install chrome"
+  },
   "dependencies": {
     "@napi-rs/canvas": "^1.2.0",
     "discord.js": "^14.28.1",
     "dotenv": "^18.0.10",
     "openai": "^7.62.0",
-    "puppeteer": "^25.19.0",
-    "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
-  },
-  "scripts": {
-    "postinstall": "npx puppeteer browsers install chrome"
+    "puppeteer": "^25.19.0"
   }
 }
