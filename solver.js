@@ -329,6 +329,7 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
   state.step = 'Loading Homework dashboard';
   console.log('[STEP]', state.step);
   let lastQCode = "";
+  let totalSolvedCount = 0;
       let sameQCount = 0;
        
       for (let i = 0; i < 10; i++) {
@@ -417,7 +418,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
 
       const onQuestionAlready = await page.evaluate((n) => {
         const t = document.body ? document.body.innerText : "";
-        return t.includes(n + "A") && (t.includes("Answer") || t.includes("Watch video"));
+        return new RegExp("\\b" + n + "[A-Z]\\b").test(t) && (t.includes("Answer") || t.includes("Submit") || t.includes("Bookwork"));
       }, taskNum).catch(() => false);
 
       if (!onQuestionAlready) {
@@ -656,6 +657,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           return t === "next" || t === "continue" || t === "next question" || t === "try again";
         });
         await new Promise(r => setTimeout(r, 1000));
+        totalSolvedCount++;
       }
 
       const onFirstQStill = await page.evaluate((n) => {
@@ -677,6 +679,9 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
       await new Promise(r => setTimeout(r, 1200));
     }
 
+    if (totalSolvedCount === 0) {
+      throw new Error("0 questions were solved — see screenshot of what Sparx showed");
+    }
     await dmMsg.edit(
       buildProgressPayload(session, targetHw.title, "Completed ✅", tasks)
     );
