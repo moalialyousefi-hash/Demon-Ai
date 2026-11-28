@@ -124,7 +124,7 @@ function buildSparxDashboard(session) {
   );
 
   const btnRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('run_selected_hw_btn').setLabel('▶ Start Selected').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('run_selected_hw_btn').setLabel('▷ Start Selected').setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId('toggle_completed_btn').setLabel(session.showCompleted ? 'Hide Completed' : 'Show Completed').setStyle(ButtonStyle.Secondary)
   );
 
@@ -235,25 +235,27 @@ client.on('interactionCreate', async (interaction) => {
           new SectionBuilder()
             .addTextDisplayComponents(
               new TextDisplayBuilder().setContent(
-                "## Demon AI\n" +
-                "Press **Join Queue** below to connect your Sparx Maths account and start automating your homework.\n\n" +
-                "• **▶ Join Queue** — Log in with Sparx or Microsoft 365\n" +
-                "• **💾 Saved Accounts** — One-click login for returning users\n" +
-                "• **Live DM Progress** — Real-time task progress sent to your DMs"
+                "## Demon AI Learning Platform\n" +
+                "Your gateway to automated Sparx homework assistance.\n" +
+                "Press the `Join Queue` button below to connect your account and start solving.\n\n" +
+                "__**Notes**__\n" +
+                "• Automated step-by-step solving for all your tasks\n" +
+                "• Live DM progress tracking in real-time\n" +
+                "• Supports Sparx Maths, Reader & Science\n" +
+                "• Secure and private homework sessions"
               )
             )
             .setThumbnailAccessory(new ThumbnailBuilder().setURL(avatarUrl))
         )
-        .addSeparatorComponents(new SeparatorBuilder())
         .addActionRowComponents(
           new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('join_queue_btn').setLabel('Join Queue').setEmoji('▶').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('saved_account_btn').setLabel('Saved Accounts').setEmoji('💾').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('help_btn').setLabel('Help').setEmoji('❓').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId('join_queue_btn').setLabel('Join Queue').setEmoji('▷').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('saved_account_btn').setLabel('Join Queue With Saved Details').setEmoji('▷').setStyle(ButtonStyle.Success)
+          ),
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('help_btn').setLabel('Help & FAQ').setEmoji('❓').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('saved_account_btn_manage').setLabel('Manage Accounts').setEmoji('👥').setStyle(ButtonStyle.Secondary)
           )
-        )
-        .addTextDisplayComponents(
-          new TextDisplayBuilder().setContent("-# Demon AI • Automated Homework Assistant")
         );
 
       await interaction.reply({
@@ -272,7 +274,7 @@ client.on('interactionCreate', async (interaction) => {
         )
         .addActionRowComponents(
           new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('open_sparx_modal').setLabel('Sparx Login').setEmoji('▶').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('open_sparx_modal').setLabel('Sparx Login').setEmoji('▷').setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId('open_ms_modal').setLabel('Microsoft Login').setEmoji('1525932056025235496').setStyle(ButtonStyle.Success)
           )
         );
@@ -324,7 +326,7 @@ if (interaction.customId === 'open_sparx_modal' || interaction.customId === 'ope
         }
         return await interaction.showModal(modal);
       }
-if (interaction.customId === 'saved_account_btn') {
+if (interaction.customId === 'saved_account_btn' || interaction.customId === 'saved_account_btn_manage') {
 return await interaction.reply(buildSavedAccountsMenu(interaction.user.id));
 }
 if (interaction.customId.startsWith('quick_login_saved_')) {
