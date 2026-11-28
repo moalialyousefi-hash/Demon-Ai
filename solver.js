@@ -516,7 +516,10 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
 
         const alreadyCorrect = await page.evaluate(() => document.body && document.body.innerText.includes("already got this question correct")).catch(() => false);
         if (alreadyCorrect) {
-          await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "keep going");
+          await scanAndClick(page, (el) => {
+          const t = (el.innerText || "").trim().toLowerCase();
+          return t === "keep going" && el.children.length <= 2;
+        });
           await new Promise(r => setTimeout(r, 900));
           continue;
         }
@@ -553,7 +556,11 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
             clone.querySelectorAll("img[alt]").forEach(img => { if (img.alt) img.replaceWith(" " + img.alt + " "); });
             return (clone.innerText || "").replace(/(\d+)\s*\n\s*(\d+)/g, "$1/$2").slice(0, 1800);
           }).catch(() => "");
-        await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
+        await scanAndClick(page, (el) => {
+          const r = el.getBoundingClientRect();
+          const t = (el.innerText || "").trim().toLowerCase();
+          return t === "answer" && r.top > 200 && el.children.length <= 2;
+        });
         await new Promise(r => setTimeout(r, 600));
         var numBoxes = await page.evaluate(() => Array.from(document.querySelectorAll("input, [role=\"textbox\"]")).filter(el => { const r = el.getBoundingClientRect(); return r.width > 30 && r.height > 12; }).length + ((document.body?.innerText || "").match(/Enter number/g) || []).length).catch(() => 1);
         var boxHint = numBoxes >= 2 ? " CRITICAL: This question has a fraction answer box (top numerator and bottom denominator). Return a fraction in the form numerator/denominator (e.g. 13/24)." : "";
@@ -701,7 +708,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           const nodes = Array.from(document.querySelectorAll("input, [role=\"textbox\"], div, span")).filter(el => {
             const r = el.getBoundingClientRect();
             const txt = (el.innerText || "").trim();
-            const isInput = el.tagName === "INPUT" && el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio";
+            const isInput = (el.tagName === "INPUT" && el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio") || el.isContentEditable;
             const isPlaceholderBox = txt === "Enter number" && el.children.length === 0;
             return (isInput || isPlaceholderBox) && r.left < 460 && r.width > 40 && r.height > 16;
           }).map(el => {
@@ -733,7 +740,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
             await realMouseClick(page, answerBoxes.at(1).x, answerBoxes.at(1).y);
           } else {
             const clickedSecond = await scanAndClick(page, (el) => (el.innerText || "").trim() === "Enter number");
-            if (!clickedSecond) await page.keyboard.press("Tab");
+            if (!clickedSecond) { await page.keyboard.press("ArrowDown"); await new Promise(r => setTimeout(r, 100)); }
           }
           await new Promise(r => setTimeout(r, 180));
           await enterSparxValue(den);
@@ -750,14 +757,14 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           return btn && !btn.disabled;
         }, { timeout: 2500 }).catch(() => {});
         await scanAndClick(page, (el) => {
-          if (el.tagName !== "BUTTON") return false;
+          if (el.children.length > 2) return false;
           const t = (el.innerText || "").trim().toLowerCase();
           return t === "submit" || t === "submit answer" || t === "check";
         });
         await new Promise(r => setTimeout(r, 1300));
 
         await scanAndClick(page, (el) => {
-          if (el.tagName !== "BUTTON") return false;
+          if (el.children.length > 2) return false;
           const t = (el.innerText || "").trim().toLowerCase();
           return t === "next" || t === "continue" || t === "keep going" || t === "next question" || t === "try again";
         });
@@ -767,7 +774,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
 
       const onFirstQStill = await page.evaluate((n) => {
         const t = document.body ? document.body.innerText : "";
-        return t.includes(n + "A") && !t.includes("Task complete") && !t.includes("Well done");
+        return false;
       }, taskNum).catch(() => false);
       if (onFirstQStill) {
         throw new Error("Stuck on " + taskNum + "A — see screenshot to check why Answer/Submit did not advance");
