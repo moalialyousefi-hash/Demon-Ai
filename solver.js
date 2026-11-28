@@ -1,6 +1,6 @@
 const puppeteer = require('puppeteer');
 const OpenAI = require('openai');
-const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
+const { EmbedBuilder, AttachmentBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, MessageFlags } = require('discord.js');
 const emojis = require('./emojis.json');
 
 const aiProvider = (process.env.OPENROUTER_API_KEY || process.env.OPEN_ROUTER_API_KEY || process.env.OPENROUTER_KEY || Object.values(process.env).find(v => typeof v === "string" && v.trim().startsWith("sk-or-")))
@@ -143,226 +143,34 @@ function makeEmojiBar(done, total) {
 }
 
 function buildProgressPayload(session, taskTitle, statusText, tasks, extraFiles = []) {
-  const speedLabels = { quick: 'Quick', normal: 'Normal', slow: 'Human' };
-  const taskLines = tasks
-    .map((t, idx) => '**Task ' + (idx + 1) + '**\n' + makeEmojiBar(t.done, t.total))
-    .join('\n\n');
-
-  const embed = new EmbedBuilder()
-    .setTitle('Demon AI • Maths')
-    .setDescription(
-      '**Account:** `Saved` | `' + speedLabels[session.speed] + '` | `' + session.studentName + '`\n' +
-      '**Task:** `Homework`\n' +
-      '**Status:** ' + statusText + '\n\n' +
-      'Page **1** of **1**\n' + taskLines
-    )
-    .setColor('#2B2D31');
-
-  return { embeds: [embed], files: extraFiles };
-}
-
-async function dismissCookies(page) {
-  await scanAndClick(page, (el) => {
-    if (!['BUTTON', 'A'].includes(el.tagName) && el.getAttribute('role') !== 'button') return false;
-    const t = (el.innerText || '').trim().toLowerCase();
-    return ['accept all', 'accept cookies', 'accept', 'allow all', 'i agree'].some(w => t.includes(w));
-  }).catch(() => {});
-  await page.evaluate(() => {
-    document.querySelectorAll('[id*="cookie" i], [class*="cookie" i], [id*="consent" i], [class*="consent" i]').forEach(el => {
-      if (el.offsetHeight > 40 && el.innerText && el.innerText.toLowerCase().includes('cookie')) el.remove();
-    });
-  }).catch(() => {});
-}
-
-async function loginToSparxCore(page, school, username, password, isMicrosoft, state) {
-  const cacheKey = (school + ':' + username).toLowerCase();
-  await page.setViewport({ width: 1280, height: 800 });
-  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36');
-
-  const savedCookies = cookieJar.get(cacheKey);
-  if (savedCookies && savedCookies.length > 0) {
-    state.step = 'Restoring saved session';
-    console.log('[STEP]', state.step);
-    await page.setCookie(...savedCookies).catch(() => {});
-    await page.goto("https://"+"www.sparxmaths.uk/student/", { waitUntil: "domcontentloaded", timeout: 20000 });
-    for (let i = 0; i < 6; i++) {
-      await new Promise(r => setTimeout(r, 600));
-      const isLoggedIn = await page.evaluate(() => {
-        const t = document.body ? document.body.innerText : '';
-        return !t.includes('Use your Sparx login') && /Hey\s+|Homework due|Personal Practice/i.test(t);
-      }).catch(() => false);
-      if (isLoggedIn) {
-        await dismissCookies(page);
-        console.log('[STEP] Restored session!');
-        return;
-      }
-    }
-    cookieJar.delete(cacheKey);
-  }
-
-  state.step = 'Opening Sparx student login';
-  console.log('[STEP]', state.step);
-    await page.goto("https://"+"www.sparxmaths.uk/student/", { waitUntil: "domcontentloaded", timeout: 20000 });
-  await new Promise(r => setTimeout(r, 800));
-  await dismissCookies(page);
-
-  const alreadyIn = await page.evaluate(() => {
-    const t = document.body ? document.body.innerText : '';
-    return !t.includes('Use your Sparx login') && /Hey\s+|Homework due|Personal Practice/i.test(t);
-  }).catch(() => false);
-  if (alreadyIn) return;
-
-  state.step = 'Typing school name';
-  console.log('[STEP]', state.step);
-  const schoolInputSel = 'input:not([type="hidden"])';
-  await page.waitForSelector(schoolInputSel, { visible: true, timeout: 12000 });
-  await page.click(schoolInputSel, { clickCount: 3 });
-  await page.type(schoolInputSel, school, { delay: 15 });
-  await new Promise(r => setTimeout(r, 700));
-
-  state.step = 'Selecting school from dropdown';
-  console.log('[STEP]', state.step);
-  let clickedSchool = false;
-  for (let attempt = 0; attempt < 8; attempt++) {
-    clickedSchool = await scanAndClick(page, (el, schoolName) => {
-      if (el.tagName === "INPUT" || el.querySelector("input")) return false;
-      const txt = (el.innerText || "").trim();
-      if (txt.length < 4 || txt.length > 140) return false;
-      const normTxt = txt.toLowerCase().replace(/[^a-z0-9]/g, "");
-      const normSchool = schoolName.toLowerCase().replace(/[^a-z0-9]/g, "");
-      return normTxt.includes(normSchool);
-    }, school);
-    if (clickedSchool) break;
-    await new Promise(r => setTimeout(r, 400));
-  }
-  if (!clickedSchool) {
-    throw new Error("Could not find school matching: " + school + " — try typing the full school name with spaces (e.g. Ernest Bevin Academy)");
-  }
-  await new Promise(r => setTimeout(r, 300));
-
-  await scanAndClick(page, (el) => {
-    if (el.tagName !== 'BUTTON' && el.getAttribute('role') !== 'button') return false;
-    return (el.innerText || '').trim().toLowerCase() === 'continue';
+  const lines = (tasks || []).map((t, i) => {
+    const pct = t.total > 0 ? Math.round((t.done / t.total) * 100) : 0;
+    const filled = Math.round(pct / 10);
+    const bar = "🟩".repeat(filled) + "⬛".repeat(10 - filled);
+    return `**Task ${i + 1}** (${t.done}/${t.total}) ${bar} **${pct}%**`;
   });
 
-  await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 6000 }).catch(() => {});
-  await new Promise(r => setTimeout(r, 700));
-  await dismissCookies(page);
+  const container = new ContainerBuilder()
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        `## ⚡ ${taskTitle || "Sparx Maths"}\n` +
+        `**Status:** ${statusText}\n\n` +
+        (lines.length ? lines.join("\n") : "_Loading tasks..._")
+      )
+    )
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent("-# Demon AI • Live Homework Progress")
+    );
 
-  if (isMicrosoft) {
-    state.step = 'Microsoft sign-in';
-    console.log('[STEP]', state.step);
-    await scanAndClick(page, (el) => {
-      if (!['BUTTON', 'A'].includes(el.tagName) && el.getAttribute('role') !== 'button') return false;
-      return (el.innerText || '').toLowerCase().includes('microsoft');
-    });
-    const emailSel = 'input[type="email"], input[name="loginfmt"]';
-    await page.waitForSelector(emailSel, { visible: true, timeout: 12000 });
-    await page.click(emailSel, { clickCount: 3 });
-    await page.type(emailSel, username, { delay: 15 });
-    await page.click('input[type="submit"], #idSIButton9');
-    await new Promise(r => setTimeout(r, 800));
-    const msPassSel = 'input[type="password"], input[name="passwd"]';
-    await page.waitForSelector(msPassSel, { visible: true, timeout: 12000 });
-    await page.click(msPassSel, { clickCount: 3 });
-    await page.type(msPassSel, password, { delay: 15 });
-    await page.click('input[type="submit"], #idSIButton9');
-    await new Promise(r => setTimeout(r, 800));
-    await page.click('#idSIButton9').catch(() => {});
-    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 12000 }).catch(() => {});
-  } else {
-    state.step = 'Typing username & password';
-    console.log('[STEP]', state.step);
-    await new Promise(r => setTimeout(r, 1000));
-    const alreadyIn = await page.evaluate(() => document.body && (document.body.innerText.includes("Hey ") || document.body.innerText.includes("Homework due"))).catch(() => false);
-    if (alreadyIn) return;
-    for (let w = 0; w < 4; w++) {
-      try {
-        await page.waitForSelector('input[type="password"]', { visible: true, timeout: 4000 });
-        break;
-      } catch (e) {
-        if (w === 3) throw e;
-        await new Promise(r => setTimeout(r, 600));
-      }
-    }
-    await new Promise(r => setTimeout(r, 400));
-    await dismissCookies(page);
-
-    const passRect = await page.evaluate(() => {
-      const passEl = document.querySelector("input[type=password]");
-      if (!passEl) return null;
-      const r = passEl.getBoundingClientRect();
-      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-    }).catch(() => null);
-
-    if (passRect) {
-      await realMouseClick(page, passRect.x, passRect.y - 72);
-      await page.evaluate((x, y) => {
-        const el = document.elementFromPoint(x, y);
-        if (el && el.focus) el.focus();
-      }, passRect.x, passRect.y - 72);
-      await new Promise(r => setTimeout(r, 150));
-      await page.keyboard.down("Control");
-      await page.keyboard.press("a");
-      await page.keyboard.up("Control");
-      await page.keyboard.press("Backspace");
-      await page.keyboard.type(username, { delay: 20 });
-
-      await realMouseClick(page, passRect.x, passRect.y);
-      await new Promise(r => setTimeout(r, 150));
-      await page.keyboard.type(password, { delay: 20 });
-    }
-
-    await new Promise(r => setTimeout(r, 350));
-    const loginBtnBox = await page.evaluate(() => {
-      const btn = Array.from(document.querySelectorAll("button")).find(b => /^log\s*in$|^sign\s*in$/i.test((b.innerText || "").trim()));
-      if (!btn) return null;
-      const r = btn.getBoundingClientRect();
-      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-    }).catch(() => null);
-    if (loginBtnBox) {
-      await realMouseClick(page, loginBtnBox.x, loginBtnBox.y);
-    } else {
-      await page.keyboard.press("Enter");
-    }
-    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 12000 }).catch(() => {});
-  }
-
-  state.step = 'Loading Homework dashboard';
-  console.log('[STEP]', state.step);
-  let lastQCode = "";
-  let qAttemptTracker = {};
-  let totalSolvedCount = 0;
-      let sameQCount = 0;
-       
-      for (let i = 0; i < 25; i++) {
-    await new Promise(r => setTimeout(r, 700));
-    const ready = await page.evaluate(() => {
-      const t = document.body ? document.body.innerText : '';
-      return !t.includes('Use your Sparx login') && /Homework|Compulsory|XP Boost|Target/i.test(t);
-    }).catch(() => false);
-    if (ready) break;
-  }
-await dismissCookies(page);
-const stillOnLogin = await page.evaluate(() => {
-const t = document.body ? document.body.innerText : '';
-if (/incorrect|invalid|wrong|try again/i.test(t)) return 'Sparx said: Incorrect username or password!';
-if (t.includes('Log in to Sparx using Microsoft') || t.includes('Use your Sparx login')) return 'Login did not complete — check your Username/Password or try Microsoft Login!';
-return null;
-}).catch(() => null);
-if (stillOnLogin) throw new Error(stillOnLogin);
-let freshCookies = [];
-for (let i = 0; i < 4; i++) {
-try {
-freshCookies = await page.cookies();
-break;
-} catch (e) {
-await new Promise(r => setTimeout(r, 500));
+  const payload = {
+    flags: MessageFlags.IsComponentsV2,
+    components: [container]
+  };
+  if (extraFiles && extraFiles.length) payload.files = extraFiles;
+  return payload;
 }
-}
-if (freshCookies.length > 0) cookieJar.set(cacheKey, freshCookies);
-console.log('[STEP] Login finished!');
-}
+
 async function loginToSparx(page, school, username, password, isMicrosoft) {
   await hardenPage(page);
 const state = { step: 'Launching Chrome' };

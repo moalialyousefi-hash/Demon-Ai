@@ -5,7 +5,7 @@ require('dotenv').config();
 const fs = require('fs');
 const {
   Client, GatewayIntentBits, AttachmentBuilder, REST, Routes, SlashCommandBuilder,
-  EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
+  EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, SectionBuilder, TextDisplayBuilder, ThumbnailBuilder, SeparatorBuilder, MessageFlags,
   ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, LabelBuilder
 } = require('discord.js');
 const { loginToSparx, runHomeworkInDM, getFastBrowser } = require('./solver');
@@ -117,7 +117,16 @@ function buildSparxDashboard(session) {
     new ButtonBuilder().setCustomId('toggle_completed_btn').setLabel(session.showCompleted ? 'Hide Completed' : 'Show Completed').setStyle(ButtonStyle.Secondary)
   );
 
-  return { content: '', embeds: [embed], components: [hwRow, speedRow, btnRow] };
+  const dashContainer = new ContainerBuilder()
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        `## 📚 ${session.studentName ? session.studentName + "'s " : ""}Sparx Maths Dashboard\n` +
+        (embed.data.description || "Select your homework and speed below, then press **▶ Start Selected**.")
+      )
+    )
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addActionRowComponents(hwRow, speedRow, btnRow);
+  return { flags: MessageFlags.IsComponentsV2, components: [dashContainer] };
 }
 
 async function performSparxLogin(interaction, { school, username, password, isMicrosoft }) {
@@ -209,27 +218,61 @@ client.once('clientReady', async () => {
 client.on('interactionCreate', async (interaction) => {
   try {
     if (interaction.isChatInputCommand() && interaction.commandName === 'setup') {
-      const embed = new EmbedBuilder()
-        .setTitle('Demon ai')
-        .setThumbnail(client.user.displayAvatarURL())
-        .setDescription(
-          'Choose your login method below to open your Sparx Maths dashboard.\n\n' +
-          '• **▶ Sparx Login** — For standard Sparx username & password\n' +
-          '• **<:microsoft:1525932056025235496> Microsoft Login** — For school Microsoft 365 email & password\n' +
-          '• **Live DM Progress** — Sends task progress bars directly to your DMs'
+      const avatarUrl = client.user.displayAvatarURL();
+      const setupContainer = new ContainerBuilder()
+        .addSectionComponents(
+          new SectionBuilder()
+            .addTextDisplayComponents(
+              new TextDisplayBuilder().setContent(
+                "## Demon AI\n" +
+                "Press **Join Queue** below to connect your Sparx Maths account and start automating your homework.\n\n" +
+                "• **▶ Join Queue** — Log in with Sparx or Microsoft 365\n" +
+                "• **💾 Saved Accounts** — One-click login for returning users\n" +
+                "• **Live DM Progress** — Real-time task progress sent to your DMs"
+              )
+            )
+            .setThumbnailAccessory(new ThumbnailBuilder().setURL(avatarUrl))
         )
-        .setFooter({ text: 'Demon AI • Automated Homework Assistant', iconURL: client.user.displayAvatarURL() })
-        .setColor('#1DB954');
+        .addSeparatorComponents(new SeparatorBuilder())
+        .addActionRowComponents(
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('join_queue_btn').setLabel('Join Queue').setEmoji('▶').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('saved_account_btn').setLabel('Saved Accounts').setEmoji('💾').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('help_btn').setLabel('Help').setEmoji('❓').setStyle(ButtonStyle.Secondary)
+          )
+        )
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent("-# Demon AI • Automated Homework Assistant")
+        );
 
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('open_sparx_modal').setLabel('Sparx Login').setEmoji('▶').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('open_ms_modal').setLabel('Microsoft Login').setEmoji('1525932056025235496').setStyle(ButtonStyle.Success),
-new ButtonBuilder().setCustomId('saved_account_btn').setLabel('Saved Accounts').setEmoji('💾').setStyle(ButtonStyle.Secondary),
-new ButtonBuilder().setCustomId('help_btn').setLabel('Help').setEmoji('❓').setStyle(ButtonStyle.Secondary)
-);
-return await interaction.reply({ embeds: [embed], components: [row] });
-}
-if (interaction.isButton()) {
+      await interaction.reply({
+        flags: MessageFlags.IsComponentsV2,
+        components: [setupContainer]
+      });
+      return;
+    }
+
+    if (interaction.isButton() && interaction.customId === 'join_queue_btn') {
+      const methodContainer = new ContainerBuilder()
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(
+            "### Choose Login Method\nSelect how you sign in to Sparx Maths:"
+          )
+        )
+        .addActionRowComponents(
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('open_sparx_modal').setLabel('Sparx Login').setEmoji('▶').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('open_ms_modal').setLabel('Microsoft Login').setEmoji('1525932056025235496').setStyle(ButtonStyle.Success)
+          )
+        );
+      await interaction.reply({
+        flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
+        components: [methodContainer]
+      });
+      return;
+    }
+
+    if (interaction.isButton()) {
 if (interaction.customId === 'open_sparx_modal' || interaction.customId === 'open_ms_modal') {
         const isMs = interaction.customId === 'open_ms_modal';
         const list = getSavedList(interaction.user.id);
