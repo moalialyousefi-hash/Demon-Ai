@@ -101,7 +101,7 @@ function buildSparxDashboard(session) {
       'Welcome back, **' + session.studentName + '**!\n' +
       'School: `' + session.school + '`\n' +
       'Selected Task: **' + (selectedHw ? selectedHw.title : 'None selected') + '**\n\n' +
-      'Pick a homework and speed below, then click **▶ Start Selected**.'
+      'Pick a homework and speed below, then click **▶ START TASK**.'
     )
     .setColor('#1DB954');
 
@@ -124,7 +124,7 @@ function buildSparxDashboard(session) {
   );
 
   const btnRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('run_selected_hw_btn').setLabel('▷ Start Selected').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('run_selected_hw_btn').setLabel('▶ START TASK').setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId('toggle_completed_btn').setLabel(session.showCompleted ? 'Hide Completed' : 'Show Completed').setStyle(ButtonStyle.Secondary)
   );
 
@@ -132,7 +132,7 @@ function buildSparxDashboard(session) {
     .addTextDisplayComponents(
       new TextDisplayBuilder().setContent(
         `## 📚 ${session.studentName ? session.studentName + "'s " : ""}Sparx Dashboard\n` +
-        (embed.data.description || "Select your homework and speed below, then press **▶ Start Selected**.")
+        (embed.data.description || "Select your homework and speed below, then press **▶ START TASK**.")
       )
     )
     .addSeparatorComponents(new SeparatorBuilder())
@@ -231,20 +231,18 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.isChatInputCommand() && interaction.commandName === 'setup') {
       const avatarUrl = client.user.displayAvatarURL();
       const setupContainer = new ContainerBuilder()
-        .setAccentColor(0xED4245)
+        .setAccentColor(0x8B0000)
         .addSectionComponents(
           new SectionBuilder()
             .addTextDisplayComponents(
               new TextDisplayBuilder().setContent(
-                "# 🔥 Demon AI • Sparx Autocompleter\n" +
-                "Your ultimate **24/7 AI-powered** Sparx homework assistant.\n" +
-                "Built for speed, accuracy, and hands-free completion across **Sparx Reader & Science**.\n" +
-                "Hit `▸ Join Queue` below to link your account and start completing tasks automatically.\n\n" +
-                "__**⚡ Features & Notes**__\n" +
-                "• **Smart Vision AI** — Reads passages, diagrams, and multi-step questions automatically\n" +
-                "• **Auto Progress & Checks** — Logs every answer & clears checks effortlessly\n" +
-                "• **Live DM Dashboard** — Real-time progress bars and speed controls in your DMs\n" +
-                "• **One-Click Saved Logins** — Works with both standard Sparx & Microsoft 365 accounts"
+                "# 🔥 Demon AI\n" +
+                "Automated homework solver for **Sparx Reader & Science**.\n" +
+                "Press `▶ JOIN QUEUE` below to connect your account and start.\n\n" +
+                "__**Notes**__\n" +
+                "• Fast, accurate AI solving across all tasks\n" +
+                "• Live progress tracking sent to your DMs\n" +
+                "• Supports standard Sparx & Microsoft 365 logins"
               )
             )
             .setThumbnailAccessory(new ThumbnailBuilder().setURL(avatarUrl))
@@ -252,12 +250,12 @@ client.on('interactionCreate', async (interaction) => {
         .addSeparatorComponents(new SeparatorBuilder())
         .addActionRowComponents(
           new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('join_queue_btn').setLabel('▸ Join Queue').setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId('saved_account_btn').setLabel('▸ Join Queue With Saved Details').setStyle(ButtonStyle.Danger)
+            new ButtonBuilder().setCustomId('join_queue_btn').setLabel('▶ JOIN QUEUE').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('saved_account_btn').setLabel('▶ SAVED LOGIN').setStyle(ButtonStyle.Danger)
           ),
           new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('help_btn').setLabel('Help & FAQ').setEmoji('❓').setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId('saved_account_btn_manage').setLabel('Manage Accounts').setEmoji('👥').setStyle(ButtonStyle.Danger)
+            new ButtonBuilder().setCustomId('help_btn').setLabel('HELP & FAQ').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('saved_account_btn_manage').setLabel('MANAGE ACCOUNTS').setStyle(ButtonStyle.Danger)
           )
         );
 
@@ -356,7 +354,7 @@ if (interaction.customId === 'help_btn') {
               new TextDisplayBuilder().setContent(
                 "## ❓ Demon AI • Help & Guide\n" +
                 "**1. Join Queue**\nClick **▶ Join Queue** and choose **Sparx Login** or **Microsoft Login**, then enter your school details.\n\n" +
-                "**2. Choose Homework & Speed**\nPick your due homework from the dropdown, select Quick, Normal, or Human speed, and click **▶ Start Selected**.\n\n" +
+                "**2. Choose Homework & Speed**\nPick your due homework from the dropdown, select Quick, Normal, or Human speed, and click **▶ START TASK**.\n\n" +
                 "**3. Live DM Progress**\nKeep your Direct Messages open so Demon AI can send live task progress bars as it solves each question."
               )
             )
