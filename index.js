@@ -231,32 +231,30 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.isChatInputCommand() && interaction.commandName === 'setup') {
       const avatarUrl = client.user.displayAvatarURL();
       const setupContainer = new ContainerBuilder()
+        .setAccentColor(0xED4245)
         .addSectionComponents(
           new SectionBuilder()
             .addTextDisplayComponents(
               new TextDisplayBuilder().setContent(
-                "## `Demon AI` Learning Platform\n" +
-                "**FAQ ↗**\n" +
-                "Your gateway to automated Sparx homework assistance.\n" +
-                "Our AI solver handles your tasks across **Sparx Reader & Science**.\n" +
-                "Press the `Join Queue` button below to connect your account.\n\n" +
+                "## 🔥 `Demon AI` Learning Platform\n" +
+                "Fast, automated homework solver for **Sparx Reader & Science**.\n" +
+                "Press `Join Queue` below to connect your account and start.\n\n" +
                 "__**Notes**__\n" +
-                "> • Fast, accurate AI solving for all your questions\n" +
-                "> • Real-time task progress sent directly to your DMs\n" +
-                "> • Supports standard Sparx & Microsoft 365 logins\n" +
-                "> • Secure and private automated sessions"
+                "> • Accurate AI solving across all tasks & checks\n" +
+                "> • Live progress tracking sent directly to your DMs\n" +
+                "> • Supports standard Sparx & Microsoft 365 logins"
               )
             )
             .setThumbnailAccessory(new ThumbnailBuilder().setURL(avatarUrl))
         )
         .addActionRowComponents(
           new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('join_queue_btn').setLabel('Join Queue').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('saved_account_btn').setLabel('Saved Login').setStyle(ButtonStyle.Primary)
+            new ButtonBuilder().setCustomId('join_queue_btn').setLabel('Join Queue').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('saved_account_btn').setLabel('Saved Login').setStyle(ButtonStyle.Danger)
           ),
           new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('help_btn').setLabel('Help & FAQ').setEmoji('❓').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('saved_account_btn_manage').setLabel('Manage Accounts').setEmoji('👥').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId('help_btn').setLabel('Help & FAQ').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('saved_account_btn_manage').setLabel('Manage Accounts').setStyle(ButtonStyle.Danger)
           )
         );
 
@@ -276,7 +274,7 @@ client.on('interactionCreate', async (interaction) => {
         )
         .addActionRowComponents(
           new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('open_sparx_modal').setLabel('▷ Sparx Login').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('open_sparx_modal').setLabel('▷ Sparx Login').setStyle(ButtonStyle.Danger),
             new ButtonBuilder().setCustomId('open_ms_modal').setLabel('Microsoft Login').setEmoji('1525932056025235496').setStyle(ButtonStyle.Success)
           )
         );
@@ -419,7 +417,7 @@ if (interaction.customId === 'manage_saved_account_menu') {
         .addActionRowComponents(
           new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('quick_login_saved_' + idx).setLabel('▶ Sign In').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('delete_saved_' + idx).setLabel('🗑 Delete').setStyle(ButtonStyle.Primary)
+            new ButtonBuilder().setCustomId('delete_saved_' + idx).setLabel('🗑 Delete').setStyle(ButtonStyle.Danger)
           )
         );
 
