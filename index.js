@@ -231,31 +231,32 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.isChatInputCommand() && interaction.commandName === 'setup') {
       const avatarUrl = client.user.displayAvatarURL();
       const setupContainer = new ContainerBuilder()
-        .setAccentColor(0x8B0000)
         .addSectionComponents(
           new SectionBuilder()
             .addTextDisplayComponents(
               new TextDisplayBuilder().setContent(
-                "# 🔥 Demon AI\n" +
-                "Automated homework solver for **Sparx Reader & Science**.\n" +
-                "Press `▶ JOIN QUEUE` below to connect your account and start.\n\n" +
+                "## `Demon` Learning Platform\n" +
+                "**FAQ ↗**\n" +
+                "Your gateway to automated Sparx homework assistance.\n" +
+                "Our AI solver handles your tasks across **Sparx Reader & Science**.\n" +
+                "Press the `Join Queue` button below to connect your account.\n\n" +
                 "__**Notes**__\n" +
-                "• Fast, accurate AI solving across all tasks\n" +
-                "• Live progress tracking sent to your DMs\n" +
-                "• Supports standard Sparx & Microsoft 365 logins"
+                "> • Fast, accurate AI solving for all your questions\n" +
+                "> • Real-time task progress sent directly to your DMs\n" +
+                "> • Supports standard Sparx & Microsoft 365 logins\n" +
+                "> • Secure and private automated sessions"
               )
             )
             .setThumbnailAccessory(new ThumbnailBuilder().setURL(avatarUrl))
         )
-        .addSeparatorComponents(new SeparatorBuilder())
         .addActionRowComponents(
           new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('join_queue_btn').setLabel('▶ Join Queue').setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId('saved_account_btn').setLabel('▶ Saved Login').setStyle(ButtonStyle.Primary)
           ),
           new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('help_btn').setLabel('Help & FAQ').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('saved_account_btn_manage').setLabel('Manage Accounts').setStyle(ButtonStyle.Primary)
+            new ButtonBuilder().setCustomId('help_btn').setLabel('Help & FAQ').setEmoji('❓').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('saved_account_btn_manage').setLabel('Manage Accounts').setEmoji('👥').setStyle(ButtonStyle.Secondary)
           )
         );
 
