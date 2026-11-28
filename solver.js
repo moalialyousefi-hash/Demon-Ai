@@ -488,25 +488,10 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           return active ? (active.innerText || "").trim() : null;
         }).catch(() => null);
         const liveTab = await page.evaluate(() => {
-          const pills = Array.from(document.querySelectorAll("a, button, div, span")).filter(el => {
-            const r = el.getBoundingClientRect();
-            const t = (el.innerText || "").trim();
-            return r.top < 140 && r.width > 20 && r.width < 120 && /^\d+[A-Z]$/.test(t);
-          });
-          for (const el of pills) {
-            const bg = window.getComputedStyle(el).backgroundColor || "";
-            const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-            if (m && (Number(m.at(1)) + Number(m.at(2)) + Number(m.at(3))) < 280) {
-              return (el.innerText || "").trim();
-            }
-          }
-          // Fallback: first non-green uncompleted tab in the top bar
-          const nextOpen = pills.find(el => {
-            const bg = window.getComputedStyle(el).backgroundColor || "";
-            const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-            return m && Number(m.at(2)) < 170 && (Number(m.at(1)) + Number(m.at(2)) + Number(m.at(3))) < 500;
-          });
-          return nextOpen ? (nextOpen.innerText || "").trim() : null;
+          const sel = document.querySelector('a[class*="_Selected_"], [class*="_TaskItemLink_"][class*="_Selected_"]');
+          if (sel && sel.innerText) return sel.innerText.trim();
+          const unattempted = document.querySelector('a[class*="_Unattempted_"]');
+          return unattempted && unattempted.innerText ? unattempted.innerText.trim() : null;
         }).catch(() => null);
         const qCode = liveTab || (taskNum + String.fromCharCode(65 + (sameQCount || 0)));
         if (liveTab && /^\d+/.test(liveTab)) {
@@ -740,70 +725,38 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           return unique;
         }).catch(() => []);
 
-        const enterSparxValue = async (val) => {
-          const str = String(val).trim();
-          for (const ch of str) {
-            const clickedPad = await scanAndClick(page, (el, c) => {
+        const numericInputs = await page.evaluate(() => {
+          return Array.from(document.querySelectorAll('input[class*="_TextFieldNumeric_"], input[placeholder="Enter number"], input[type="text"], input[type="number"], input:not([type])'))
+            .filter(el => {
               const r = el.getBoundingClientRect();
-              if (r.left < 360 || r.top < 140 || r.width < 36 || r.width > 180 || r.height < 28 || r.height > 75) return false;
-              const txt = (el.innerText || "").trim();
-              if (c === "-") return txt === "-" || txt === "−";
-              return txt === c && el.children.length <= 2;
-            }, ch);
-            if (!clickedPad) {
-              await page.keyboard.type(ch, { delay: 45 });
-            }
-            await new Promise(r => setTimeout(r, 110));
-          }
-        };
-
-        // Find all visible answer boxes sorted top-to-bottom (including custom "Enter number" divs and inputs)
-        const answerBoxes = await page.evaluate(() => {
-          const nodes = Array.from(document.querySelectorAll("input, [role=\"textbox\"], div, span")).filter(el => {
-            const r = el.getBoundingClientRect();
-            const txt = (el.innerText || "").trim();
-            const isInput = (el.tagName === "INPUT" && el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio") || el.isContentEditable;
-            const isPlaceholderBox = txt === "Enter number" && el.children.length === 0;
-            return (isInput || isPlaceholderBox) && r.left < 460 && r.width > 40 && r.height > 16;
-          }).map(el => {
-            const r = el.getBoundingClientRect();
-            return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-          }).sort((a, b) => a.y - b.y);
-
-          const unique = [];
-          for (const b of nodes) {
-            if (!unique.some(u => Math.abs(u.y - b.y) < 18 && Math.abs(u.x - b.x) < 25)) unique.push(b);
-          }
-          return unique;
+              return r.width > 30 && r.height > 15 && el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio";
+            })
+            .map(el => {
+              const r = el.getBoundingClientRect();
+              return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+            })
+            .sort((a, b) => a.y - b.y);
         }).catch(() => []);
 
-        if (answer.includes("/")) {
-          const parts = answer.split("/");
-          const num = (parts.at(0) || "").trim();
-          const den = (parts.at(1) || "").trim();
-
-          // Click top numerator box and enter numerator
-          if (answerBoxes.length >= 1) {
-            await realMouseClick(page, answerBoxes.at(0).x, answerBoxes.at(0).y);
-            await new Promise(r => setTimeout(r, 150));
+        const fillNumericBox = async (box, val) => {
+          const str = String(val).trim();
+          if (box) {
+            await page.mouse.click(box.x, box.y, { clickCount: 3 });
+            await new Promise(r => setTimeout(r, 120));
+            await page.keyboard.press("Backspace");
           }
-          await enterSparxValue(num);
+          await page.keyboard.type(str, { delay: 55 });
+          await new Promise(r => setTimeout(r, 150));
+        };
 
-          // Click lower denominator box ("Enter number") and enter denominator
-          if (answerBoxes.length >= 2) {
-            await realMouseClick(page, answerBoxes.at(1).x, answerBoxes.at(1).y);
-          } else {
-            const clickedSecond = await scanAndClick(page, (el) => (el.innerText || "").trim() === "Enter number");
-            if (!clickedSecond) { await page.keyboard.press("ArrowDown"); await new Promise(r => setTimeout(r, 100)); }
-          }
-          await new Promise(r => setTimeout(r, 180));
-          await enterSparxValue(den);
+        if (answer.includes("/") && numericInputs.length >= 2) {
+          const [num, den] = answer.split("/").map(p => p.trim());
+          await fillNumericBox(numericInputs.at(0), num);
+          await fillNumericBox(numericInputs.at(1), den);
+        } else if (numericInputs.length >= 1) {
+          await fillNumericBox(numericInputs.at(0), answer);
         } else {
-          if (answerBoxes.length >= 1) {
-            await realMouseClick(page, answerBoxes.at(0).x, answerBoxes.at(0).y);
-            await new Promise(r => setTimeout(r, 150));
-          }
-          await enterSparxValue(answer);
+          await page.keyboard.type(String(answer).trim(), { delay: 55 });
         }
 
         await page.waitForFunction(() => {
