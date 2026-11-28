@@ -734,56 +734,56 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           return unique;
         }).catch(() => []);
 
-        const numericInputs = await page.evaluate(() => {
-          return Array.from(document.querySelectorAll('input[class*="_TextFieldNumeric_"], input[placeholder="Enter number"], input[type="text"], input[type="number"], input:not([type])'))
-            .filter(el => {
-              const r = el.getBoundingClientRect();
-              return r.width > 30 && r.height > 15 && el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio";
-            })
-            .map(el => {
-              const r = el.getBoundingClientRect();
-              return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
-            })
-            .sort((a, b) => a.y - b.y);
-        }).catch(() => []);
+        const inputCount = await page.evaluate(() => {
+          return Array.from(document.querySelectorAll("input")).filter(el => {
+            const r = el.getBoundingClientRect();
+            return r.width > 30 && r.height > 15 && el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio";
+          }).length;
+        }).catch(() => 0);
 
-        const fillNumericBox = async (box, val) => {
+        const typeIntoInputIndex = async (idx, val) => {
           const str = String(val).trim();
-          if (box) {
-            await page.mouse.click(box.x, box.y);
-            await new Promise(r => setTimeout(r, 140));
-            await page.evaluate((coords, text) => {
-              const el = document.elementFromPoint(coords.x, coords.y);
-              const inp = el && (el.tagName === "INPUT" ? el : el.querySelector("input"));
-              if (inp) {
-                inp.focus();
-                const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-                if (setter) setter.call(inp, "");
-                inp.dispatchEvent(new Event("input", { bubbles: true }));
-              }
-            }, box, str);
-            await new Promise(r => setTimeout(r, 100));
+          const coords = await page.evaluate((index) => {
+            const inputs = Array.from(document.querySelectorAll("input"))
+              .filter(el => {
+                const r = el.getBoundingClientRect();
+                return r.width > 30 && r.height > 15 && el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio";
+              })
+              .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+            const target = inputs.at(index);
+            if (!target) return null;
+            target.scrollIntoView({ block: "center" });
+            target.focus();
+            target.click();
+            const r = target.getBoundingClientRect();
+            return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+          }, idx).catch(() => null);
+
+          if (coords) {
+            await page.mouse.click(coords.x, coords.y);
+            await new Promise(r => setTimeout(r, 120));
+          } else if (idx > 0) {
+            await page.keyboard.press("Tab");
+            await new Promise(r => setTimeout(r, 120));
           }
-          await page.keyboard.type(str, { delay: 75 });
-          await page.evaluate((coords) => {
-            const el = document.elementFromPoint(coords.x, coords.y);
-            const inp = el && (el.tagName === "INPUT" ? el : el.querySelector("input"));
-            if (inp) {
-              inp.dispatchEvent(new Event("input", { bubbles: true }));
-              inp.dispatchEvent(new Event("change", { bubbles: true }));
-            }
-          }, box || { x: 0, y: 0 });
+
+          await page.keyboard.down("Control");
+          await page.keyboard.press("KeyA");
+          await page.keyboard.up("Control");
+          await page.keyboard.press("Backspace");
+          await new Promise(r => setTimeout(r, 80));
+          await page.keyboard.type(str, { delay: 80 });
           await new Promise(r => setTimeout(r, 180));
         };
 
-        if (answer.includes("/") && numericInputs.length >= 2) {
+        if (answer.includes("/")) {
           const [num, den] = answer.split("/").map(p => p.trim());
-          await fillNumericBox(numericInputs.at(0), num);
-          await fillNumericBox(numericInputs.at(1), den);
-        } else if (numericInputs.length >= 1) {
-          await fillNumericBox(numericInputs.at(0), answer);
+          await typeIntoInputIndex(0, num);
+          await typeIntoInputIndex(1, den);
+        } else if (inputCount >= 1) {
+          await typeIntoInputIndex(0, answer);
         } else {
-          await page.keyboard.type(String(answer).trim(), { delay: 55 });
+          await page.keyboard.type(String(answer).trim(), { delay: 80 });
         }
 
         await page.waitForFunction(() => {
