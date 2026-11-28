@@ -100,26 +100,7 @@ async function fillReactInput(page, box, value) {
   await humanType(page, value);
 }
 
-async function humanType(page, text) {
-  for (const ch of String(text)) {
-    await page.keyboard.type(ch, { delay: 25 + Math.floor(Math.random() * 65) });
-  }
-}
 
-async function fillReactInput(page, box, value) {
-  await realMouseClick(page, box.x, box.y);
-  await new Promise(r => setTimeout(r, 90 + Math.floor(Math.random() * 90)));
-  await page.evaluate((x, y) => {
-    const el = document.elementFromPoint(x, y)?.closest("input") || document.activeElement;
-    if (el && el.tagName === "INPUT") {
-      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-      if (setter) setter.call(el, "");
-      else el.value = "";
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-    }
-  }, box.x, box.y).catch(() => {});
-  await humanType(page, value);
-}
 
 async function realMouseClick(page, x, y) {
   await smoothMoveCursor(page, x, y);
