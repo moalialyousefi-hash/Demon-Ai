@@ -569,13 +569,13 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
             return (clone.innerText || "").replace(/(\d+)\s*\n\s*(\d+)/g, "$1/$2").replace(/Enter number/gi, "").slice(0, 1800);
           }).catch(() => "");
 
-          const jsonPrompt = "You are a UK GCSE/KS3 Sparx Maths solver. Solve step-by-step and return ONLY valid JSON in the exact shape: {\"steps\": \"brief calculation\", \"answer\": \"exact final value\"}. " + boxHint;
+          const jsonPrompt = "You are a UK GCSE/KS3 Sparx Maths solver. Show 2 short lines of calculation, then end with FINAL: <exact answer> (e.g. FINAL: 13/24). " + boxHint;
 
           res = null;
           if (visionModel) {
             res = await groq.chat.completions.create({
               model: visionModel,
-              response_format: { type: "json_object" },
+              
               messages: [
                 { role: "system", content: jsonPrompt },
                 { role: "user", content: [{ type: "text", text: "Solve this Sparx Maths question accurately in JSON." }, { type: "image_url", image_url: { url: "data:image/png;base64," + shot } }] }
@@ -588,7 +588,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           if (!res) {
             res = await groq.chat.completions.create({
               model: chatModel,
-              response_format: { type: "json_object" },
+              
               messages: [
                 { role: "system", content: jsonPrompt },
                 { role: "user", content: "Solve this Sparx Maths question from the extracted text and return JSON:\n\n" + qText }
@@ -599,12 +599,8 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           }
 
           const rawContent = res.choices.at(0).message.content.trim();
-          try {
-            const parsed = JSON.parse(rawContent);
-            answer = String(parsed.answer || "").trim();
-          } catch (e) {
-            answer = rawContent;
-          }
+          const m = rawContent.match(/FINAL:\s*([^\r\n]+)/i);
+          answer = (m ? m.at(1) : rawContent.split(/\r?\n/).pop()).replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "$1/$2").replace(/\s*\/\s*/g, "/").replace(/^[\`"\x27]+|[\`"\x27.]+$/g, "").trim();
         }
 
         answer = answer.replace(/^[`"']+|[`"'.]+$/g, "").trim();
