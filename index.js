@@ -96,7 +96,7 @@ function buildSparxDashboard(session) {
   const selectedHw = session.homeworks.find(h => h.id === session.selectedHwId);
 
   const embed = new EmbedBuilder()
-    .setTitle('Demon AI • Sparx Maths')
+    .setTitle('Demon AI • Sparx')
     .setDescription(
       'Welcome back, **' + session.studentName + '**!\n' +
       'School: `' + session.school + '`\n' +
@@ -131,7 +131,7 @@ function buildSparxDashboard(session) {
   const dashContainer = new ContainerBuilder()
     .addTextDisplayComponents(
       new TextDisplayBuilder().setContent(
-        `## 📚 ${session.studentName ? session.studentName + "'s " : ""}Sparx Maths Dashboard\n` +
+        `## 📚 ${session.studentName ? session.studentName + "'s " : ""}Sparx Dashboard\n` +
         (embed.data.description || "Select your homework and speed below, then press **▶ Start Selected**.")
       )
     )
@@ -152,7 +152,7 @@ async function performSparxLogin(interaction, { school, username, password, isMi
     await interaction.editReply('Step 1/3: Connecting to browser (0s)...');
     statusTicker = setInterval(() => {
       seconds += 5;
-      interaction.editReply('Logging into Sparx Maths (' + seconds + 's elapsed)...').catch(() => {});
+      interaction.editReply('Logging into Sparx (' + seconds + 's elapsed)...').catch(() => {});
     }, 5000);
 
     browser = await getFastBrowser();
@@ -237,12 +237,13 @@ client.on('interactionCreate', async (interaction) => {
               new TextDisplayBuilder().setContent(
                 "## Demon AI Learning Platform\n" +
                 "Your gateway to automated Sparx homework assistance.\n" +
-                "Press the `Join Queue` button below to connect your account and start solving.\n\n" +
+                "Our AI-powered solver handles your tasks across Sparx, Reader, and Science.\n" +
+                "Press the `Join Queue` button below to connect your Sparx account and get started.\n\n" +
                 "__**Notes**__\n" +
-                "• Automated step-by-step solving for all your tasks\n" +
-                "• Live DM progress tracking in real-time\n" +
-                "• Supports Sparx Maths, Reader & Science\n" +
-                "• Secure and private homework sessions"
+                "• Automated step-by-step solving for all your Sparx questions\n" +
+                "• Real-time progress bars & live updates sent directly to your DMs\n" +
+                "• Supports both standard Sparx and Microsoft 365 school logins\n" +
+                "• Fast, reliable, and private automated homework sessions"
               )
             )
             .setThumbnailAccessory(new ThumbnailBuilder().setURL(avatarUrl))
@@ -269,7 +270,7 @@ client.on('interactionCreate', async (interaction) => {
       const methodContainer = new ContainerBuilder()
         .addTextDisplayComponents(
           new TextDisplayBuilder().setContent(
-            "### Choose Login Method\nSelect how you sign in to Sparx Maths:"
+            "### Choose Login Method\nSelect how you sign in to Sparx:"
           )
         )
         .addActionRowComponents(
@@ -298,7 +299,7 @@ if (interaction.customId === 'open_sparx_modal' || interaction.customId === 'ope
           .setCustomId('platform_input')
           .setPlaceholder('— none from this list —')
           .addOptions([
-            { label: 'Sparx Maths', value: 'maths', emoji: '🇲', default: (saved.platform || 'maths') === 'maths' },
+            { label: 'Sparx', value: 'maths', emoji: '🇲', default: (saved.platform || 'maths') === 'maths' },
             { label: 'Sparx Reader', value: 'reader', emoji: '🇷', default: saved.platform === 'reader' },
             { label: 'Sparx Science', value: 'science', emoji: '🇸', default: saved.platform === 'science' }
           ]);
@@ -317,7 +318,7 @@ if (interaction.customId === 'open_sparx_modal' || interaction.customId === 'ope
             )
           );
         } else {
-          modal.setTitle(isMs ? "Microsoft Sparx Login" : "Sparx Maths Login");
+          modal.setTitle(isMs ? "Microsoft Sparx Login" : "Sparx Login");
           modal.addComponents(
             new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("school_input").setLabel("School Name").setStyle(TextInputStyle.Short).setValue(saved.school).setRequired(true)),
             new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("username_input").setLabel("Username or Email").setStyle(TextInputStyle.Short).setValue(saved.username).setRequired(true)),
@@ -361,7 +362,7 @@ if (interaction.customId === 'help_btn') {
         )
         .addSeparatorComponents(new SeparatorBuilder())
         .addTextDisplayComponents(
-          new TextDisplayBuilder().setContent("-# Demon AI • Sparx Maths Assistant")
+          new TextDisplayBuilder().setContent("-# Demon AI • Sparx Assistant")
         );
       return await interaction.reply({ flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral, components: [helpContainer] });
     }
