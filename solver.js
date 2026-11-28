@@ -660,12 +660,12 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
                   ]
                 }],
                 temperature: 0.0,
-                max_tokens: 300
+                max_tokens: 900
               })
             });
             const orJson = await orRes.json();
             if (!orRes.ok) throw new Error("OpenRouter (" + orRes.status + "): " + (orJson.error?.message || JSON.stringify(orJson)));
-            rawContent = orJson.choices?.at(0)?.message?.content || "";
+            const msgObj = orJson.choices?.at(0)?.message || {}; rawContent = msgObj.content || msgObj.reasoning || "";
           } else {
             throw new Error("Missing GEMINI_API_KEY or OPENROUTER_API_KEY in Railway Variables!");
           }
@@ -676,7 +676,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
 
         answer = answer.replace(/^[\`"\x27]+|[\`"\x27.]+$/g, "").trim();
           if (!answer) {
-              console.log("EMPTY AI RAW:", JSON.stringify(orJson || {}));
+              console.log("EMPTY AI RAW:", rawContent);
             const nextTab = qCode.replace(/([A-Z])$/, (_, ch) => String.fromCharCode(ch.charCodeAt(0) + 1));
             const skipped = await scanAndClick(page, (el, target) => {
               const r = el.getBoundingClientRect();
@@ -823,7 +823,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
 
       await scanAndClick(page, (el) => {
         const t = (el.innerText || "").trim().toLowerCase();
-        return t === "continue" || t === "back to homework" || t === "sparx maths" || t === "< sparx maths";
+        return t === "continue" || t === "back to task list" || t === "back to homework" || t === "sparx maths" || t === "< sparx maths";
       });
       await new Promise(r => setTimeout(r, 1200));
     }
