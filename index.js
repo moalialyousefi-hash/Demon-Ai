@@ -299,7 +299,7 @@ if (interaction.customId === 'open_sparx_modal' || interaction.customId === 'ope
           .setCustomId('platform_input')
           .setPlaceholder('— none from this list —')
           .addOptions([
-            { label: 'Sparx', value: 'maths', emoji: '🇲', default: (saved.platform || 'maths') === 'maths' },
+            { label: 'Sparx Maths', value: 'maths', emoji: '🇲', default: (saved.platform || 'maths') === 'maths' },
             { label: 'Sparx Reader', value: 'reader', emoji: '🇷', default: saved.platform === 'reader' },
             { label: 'Sparx Science', value: 'science', emoji: '🇸', default: saved.platform === 'science' }
           ]);
