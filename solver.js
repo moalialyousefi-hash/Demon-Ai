@@ -335,7 +335,7 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
   let totalSolvedCount = 0;
       let sameQCount = 0;
        
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 25; i++) {
     await new Promise(r => setTimeout(r, 700));
     const ready = await page.evaluate(() => {
       const t = document.body ? document.body.innerText : '';
