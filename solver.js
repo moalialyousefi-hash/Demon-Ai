@@ -572,7 +572,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
             if (!gemRes.ok) throw new Error("Gemini (" + gemRes.status + "): " + (gemJson.error?.message || JSON.stringify(gemJson)));
             rawContent = gemJson.candidates?.at(0)?.content?.parts?.map(p => p.text).join("\n") || "";
           } else if ((process.env.OPENROUTER_API_KEY || process.env.OPEN_ROUTER_API_KEY || process.env.OPENROUTER_KEY || Object.values(process.env).find(v => typeof v === "string" && v.trim().startsWith("sk-or-")))) {
-            const orRes = await fetch("https://openrouter.ai", {
+            const orRes = await fetch("https://openrouter.ai" + "/api/v1/chat/completions", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
