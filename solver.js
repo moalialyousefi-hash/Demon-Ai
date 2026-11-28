@@ -463,7 +463,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
       }
 
       
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 25; i++) {
         const taskFinished = await page.evaluate(() => {
           const t = document.body ? document.body.innerText : "";
           const hasAnswerBtn = Array.from(document.querySelectorAll("button")).some(b => /^answer$|^submit$/i.test((b.innerText || "").trim()));
