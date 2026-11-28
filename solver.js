@@ -390,6 +390,7 @@ clearTimeout(timer);
 }
 }
 async function runHomeworkInDM(user, session, targetHw) {
+  const qAttemptTracker = {};
   let totalSolvedCount = 0;
   let answer = "";
   answer = "";
