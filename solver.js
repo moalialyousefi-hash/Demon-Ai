@@ -548,10 +548,10 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
               model: visionModel,
               messages: [
                 { role: "system", content: sysPrompt + boxHint },
-                { role: "user", content: [{ type: "text", text: "Solve this Sparx Maths question carefully. Do the math step by step internally, then output ONLY the exact final answer (no repeated digits, no words)." }, { type: "image_url", image_url: { url: "data:image/png;base64," + shot } }] }
+                { role: "user", content: [{ type: "text", text: "Solve this Sparx Maths question carefully. Do the math step by step internally, then show 2 short lines of calculation, then end with FINAL: <exact answer> (e.g. FINAL: 13/24)." }, { type: "image_url", image_url: { url: "data:image/png;base64," + shot } }] }
               ],
               temperature: 0.0,
-              max_tokens: 40
+              max_tokens: 220
             });
           } catch (visionErr) {
             const qText = await page.evaluate(() => {
@@ -580,7 +580,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
 
         answer = answer.replace(/^[`"']+|[`"'.]+$/g, "").trim();
         if (currentCode) bookworkLog[currentCode] = answer;
-        await dmMsg.edit(buildProgressPayload(session, targetHw.title, "Entering " + qCode + " (" + answer.slice(0, 25) + ")...", tasks)).catch(() => {});
+        await dmMsg.edit({ ...buildProgressPayload(session, targetHw.title, "Entering " + qCode + " (" + answer.slice(0, 25) + ")...", tasks), files: [{ attachment: Buffer.from(shot, "base64"), name: qCode + ".png" }] }).catch(() => {});
         await new Promise(r => setTimeout(r, delayMs));
 
         await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
