@@ -101,7 +101,7 @@ function buildSparxDashboard(session) {
       'Welcome back, **' + session.studentName + '**!\n' +
       'School: `' + session.school + '`\n' +
       'Selected Task: **' + (selectedHw ? selectedHw.title : 'None selected') + '**\n\n' +
-      'Pick a homework and speed below, then click **▶ START TASK**.'
+      'Pick a homework and speed below, then click **▶ Start Task**.'
     )
     .setColor('#1DB954');
 
@@ -124,7 +124,7 @@ function buildSparxDashboard(session) {
   );
 
   const btnRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('run_selected_hw_btn').setLabel('▶ START TASK').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('run_selected_hw_btn').setLabel('▶ Start Task').setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId('toggle_completed_btn').setLabel(session.showCompleted ? 'Hide Completed' : 'Show Completed').setStyle(ButtonStyle.Secondary)
   );
 
@@ -132,7 +132,7 @@ function buildSparxDashboard(session) {
     .addTextDisplayComponents(
       new TextDisplayBuilder().setContent(
         `## 📚 ${session.studentName ? session.studentName + "'s " : ""}Sparx Dashboard\n` +
-        (embed.data.description || "Select your homework and speed below, then press **▶ START TASK**.")
+        (embed.data.description || "Select your homework and speed below, then press **▶ Start Task**.")
       )
     )
     .addSeparatorComponents(new SeparatorBuilder())
@@ -250,12 +250,12 @@ client.on('interactionCreate', async (interaction) => {
         .addSeparatorComponents(new SeparatorBuilder())
         .addActionRowComponents(
           new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('join_queue_btn').setLabel('▶ JOIN QUEUE').setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId('saved_account_btn').setLabel('▶ SAVED LOGIN').setStyle(ButtonStyle.Danger)
+            new ButtonBuilder().setCustomId('join_queue_btn').setLabel('▶ Join Queue').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('saved_account_btn').setLabel('▶ Saved Login').setStyle(ButtonStyle.Primary)
           ),
           new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('help_btn').setLabel('HELP & FAQ').setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId('saved_account_btn_manage').setLabel('MANAGE ACCOUNTS').setStyle(ButtonStyle.Danger)
+            new ButtonBuilder().setCustomId('help_btn').setLabel('Help & FAQ').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('saved_account_btn_manage').setLabel('Manage Accounts').setStyle(ButtonStyle.Primary)
           )
         );
 
@@ -354,7 +354,7 @@ if (interaction.customId === 'help_btn') {
               new TextDisplayBuilder().setContent(
                 "## ❓ Demon AI • Help & Guide\n" +
                 "**1. Join Queue**\nClick **▶ Join Queue** and choose **Sparx Login** or **Microsoft Login**, then enter your school details.\n\n" +
-                "**2. Choose Homework & Speed**\nPick your due homework from the dropdown, select Quick, Normal, or Human speed, and click **▶ START TASK**.\n\n" +
+                "**2. Choose Homework & Speed**\nPick your due homework from the dropdown, select Quick, Normal, or Human speed, and click **▶ Start Task**.\n\n" +
                 "**3. Live DM Progress**\nKeep your Direct Messages open so Demon AI can send live task progress bars as it solves each question."
               )
             )
@@ -418,7 +418,7 @@ if (interaction.customId === 'manage_saved_account_menu') {
         .addActionRowComponents(
           new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('quick_login_saved_' + idx).setLabel('▶ Sign In').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('delete_saved_' + idx).setLabel('🗑 Delete').setStyle(ButtonStyle.Danger)
+            new ButtonBuilder().setCustomId('delete_saved_' + idx).setLabel('🗑 Delete').setStyle(ButtonStyle.Primary)
           )
         );
 
