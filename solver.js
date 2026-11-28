@@ -386,6 +386,7 @@ clearTimeout(timer);
 }
 }
 async function runHomeworkInDM(user, session, targetHw) {
+  let totalSolvedCount = 0;
   let answer = "";
   answer = "";
   let lastQCode = "";
@@ -610,16 +611,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           const str = String(val).trim();
           await page.keyboard.down("Control"); await page.keyboard.press("a"); await page.keyboard.up("Control");
           await page.keyboard.press("Backspace");
-          for (const ch of str) {
-            const clickedPad = await scanAndClick(page, (el, c) => {
-              if (el.tagName !== "BUTTON" && el.getAttribute("role") !== "button") return false;
-              return (el.innerText || "").trim() === c;
-            }, ch);
-            if (!clickedPad) {
-              await page.keyboard.type(ch, { delay: 35 });
-            }
-            await new Promise(r => setTimeout(r, 80));
-          }
+          await page.keyboard.type(str, { delay: 45 });
         };
 
         if (answer.includes("/")) {
