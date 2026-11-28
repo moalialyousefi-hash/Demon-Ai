@@ -542,49 +542,55 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           answer = gData.candidates.at(0).content.parts.at(0).text.trim();
         } else {
           let res;
-          const modelsList = await aiProvider.models.list().catch(() => ({ data: [] }));
-          var allModels = (modelsList.data || []).map(m => m.id).filter(id => !/whisper|tts|guard|distil/i.test(id));
-          const visionModel = process.env.OPENROUTER_API_KEY ? "openrouter/free" : allModels.find(id => /vision|scout|maverick|qwen.*vl|pixtral|llava/i.test(id));
-          const chatModel = process.env.OPENROUTER_API_KEY ? "openrouter/free" : (allModels.find(id => /70b|32b|qwen|llama|gpt/i.test(id)) || allModels.at(0) || "llama-3.1-8b-instant");
+          const promptText = "You are a UK GCSE/KS3 Sparx Maths solver. Look at the question image and text carefully, show 2 short lines of calculation, then end with FINAL: <exact answer> (e.g. FINAL: 13/24). " + boxHint + "\n\nQuestion text: " + qText;
+          let rawContent = "";
 
-          const qText = await page.evaluate(() => {
-            const clone = document.body.cloneNode(true);
-            clone.querySelectorAll("img[alt]").forEach(img => {
-              if (img.alt) img.replaceWith(" " + img.alt + " ");
+          if (process.env.GEMINI_API_KEY) {
+            const gemRes = await fetch("https://googleapis.com" + process.env.GEMINI_API_KEY.trim(), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [
+                    { text: promptText },
+                    { inline_data: { mime_type: "image/png", data: shot } }
+                  ]
+                }],
+                generationConfig: { temperature: 0.0, maxOutputTokens: 300 }
+              })
             });
-            return (clone.innerText || "").replace(/(\d+)\s*\n\s*(\d+)/g, "$1/$2").replace(/Enter number/gi, "").slice(0, 1800);
-          }).catch(() => "");
-
-          const jsonPrompt = "You are a UK GCSE/KS3 Sparx Maths solver. Show 2 short lines of calculation, then end with FINAL: <exact answer> (e.g. FINAL: 13/24). " + boxHint;
-
-          res = null;
-          if (visionModel) {
-            res = await aiProvider.chat.completions.create({
-              model: visionModel,
-              
-              messages: [
-                { role: "system", content: jsonPrompt },
-                { role: "user", content: [{ type: "text", text: "Solve this Sparx Maths question accurately in JSON." }, { type: "image_url", image_url: { url: "data:image/png;base64," + shot } }] }
-              ],
-              temperature: 0.0,
-              max_tokens: 250
-            }).catch(() => null);
+            const gemJson = await gemRes.json();
+            if (!gemRes.ok) throw new Error("Gemini (" + gemRes.status + "): " + (gemJson.error?.message || JSON.stringify(gemJson)));
+            rawContent = gemJson.candidates?.at(0)?.content?.parts?.map(p => p.text).join("\n") || "";
+          } else if (process.env.OPENROUTER_API_KEY) {
+            const orRes = await fetch("https://openrouter.ai", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + process.env.OPENROUTER_API_KEY.trim(),
+                "HTTP-Referer": "https://github.com",
+                "X-Title": "Demon-Ai"
+              },
+              body: JSON.stringify({
+                model: "openrouter/free",
+                messages: [{
+                  role: "user",
+                  content: [
+                    { type: "text", text: promptText },
+                    { type: "image_url", image_url: { url: "data:image/png;base64," + shot } }
+                  ]
+                }],
+                temperature: 0.0,
+                max_tokens: 300
+              })
+            });
+            const orJson = await orRes.json();
+            if (!orRes.ok) throw new Error("OpenRouter (" + orRes.status + "): " + (orJson.error?.message || JSON.stringify(orJson)));
+            rawContent = orJson.choices?.at(0)?.message?.content || "";
+          } else {
+            throw new Error("Missing GEMINI_API_KEY or OPENROUTER_API_KEY in Railway Variables!");
           }
 
-          if (!res) {
-            res = await aiProvider.chat.completions.create({
-              model: chatModel,
-              
-              messages: [
-                { role: "system", content: jsonPrompt },
-                { role: "user", content: "Solve this Sparx Maths question from the extracted text and return JSON:\n\n" + qText }
-              ],
-              temperature: 0.0,
-              max_tokens: 250
-            });
-          }
-
-          const rawContent = res.choices.at(0).message.content.trim();
           const m = rawContent.match(/FINAL:\s*([^\r\n]+)/i);
           answer = (m ? m.at(1) : rawContent.split(/\r?\n/).pop()).replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "$1/$2").replace(/\s*\/\s*/g, "/").replace(/^[\`"\x27]+|[\`"\x27.]+$/g, "").trim();
         }
