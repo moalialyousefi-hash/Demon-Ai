@@ -532,6 +532,19 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
             continue;
           }
         }
+        qAttemptTracker[qCode] = (qAttemptTracker[qCode] || 0) + 1;
+        if (qAttemptTracker[qCode] > 2) {
+          const nextTab = qCode.replace(/([A-Z])$/, (_, ch) => String.fromCharCode(ch.charCodeAt(0) + 1));
+          const skipped = await scanAndClick(page, (el, target) => {
+            const r = el.getBoundingClientRect();
+            return r.top < 140 && (el.innerText || "").trim().startsWith(target);
+          }, nextTab);
+          if (skipped) {
+            await dmMsg.edit(buildProgressPayload(session, targetHw.title, "Skipped " + qCode + " -> " + nextTab + "...", tasks)).catch(() => {});
+            await new Promise(r => setTimeout(r, 900));
+            continue;
+          }
+        }
         const shot = await page.screenshot({ encoding: "base64" }).catch(() => null);
         if (!shot) { await new Promise(r => setTimeout(r, 1000)); continue; }
           const qText = await page.evaluate(() => {
