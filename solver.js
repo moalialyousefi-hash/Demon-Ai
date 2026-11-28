@@ -487,7 +487,31 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           });
           return active ? (active.innerText || "").trim() : null;
         }).catch(() => null);
-        const qCode = detectedTab || (taskNum + String.fromCharCode(65 + q));
+        const liveTab = await page.evaluate(() => {
+          const pills = Array.from(document.querySelectorAll("a, button, div, span")).filter(el => {
+            const r = el.getBoundingClientRect();
+            const t = (el.innerText || "").trim();
+            return r.top < 140 && r.width > 20 && r.width < 120 && /^\d+[A-Z]$/.test(t);
+          });
+          for (const el of pills) {
+            const bg = window.getComputedStyle(el).backgroundColor || "";
+            const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+            if (m && (Number(m.at(1)) + Number(m.at(2)) + Number(m.at(3))) < 280) {
+              return (el.innerText || "").trim();
+            }
+          }
+          // Fallback: first non-green uncompleted tab in the top bar
+          const nextOpen = pills.find(el => {
+            const bg = window.getComputedStyle(el).backgroundColor || "";
+            const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+            return m && Number(m.at(2)) < 170 && (Number(m.at(1)) + Number(m.at(2)) + Number(m.at(3))) < 500;
+          });
+          return nextOpen ? (nextOpen.innerText || "").trim() : null;
+        }).catch(() => null);
+        const qCode = liveTab || (taskNum + String.fromCharCode(65 + q));
+        if (liveTab && /^\d+/.test(liveTab)) {
+          taskNum = Number(liveTab.match(/^(\d+)/).at(1));
+        }
         if (qCode === lastQCode) {
           sameQCount++;
           if (sameQCount >= 2) {
@@ -672,6 +696,12 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           }
         if (currentCode) bookworkLog[currentCode] = answer;
         await scanAndClick(page, (el) => {
+            const r = el.getBoundingClientRect();
+            const t = (el.innerText || "").trim().toLowerCase();
+            return t === "answer" && r.top > 200 && el.children.length <= 2;
+          });
+          await new Promise(r => setTimeout(r, 700));
+          await scanAndClick(page, (el) => {
             const r = el.getBoundingClientRect();
             const t = (el.innerText || "").trim().toLowerCase();
             return t === "answer" && r.top > 200 && el.children.length <= 2;
