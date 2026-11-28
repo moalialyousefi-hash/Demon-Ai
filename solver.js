@@ -620,9 +620,20 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
 
         const enterSparxValue = async (val) => {
           const str = String(val).trim();
-          await page.keyboard.down("Control"); await page.keyboard.press("a"); await page.keyboard.up("Control");
-          await page.keyboard.press("Backspace");
-          await page.keyboard.type(str, { delay: 45 });
+          for (const ch of str) {
+            const targetChar = ch === "-" ? "−" : ch;
+            const clickedPad = await scanAndClick(page, (el, c) => {
+              if (el.tagName !== "BUTTON" && el.getAttribute("role") !== "button") return false;
+              const r = el.getBoundingClientRect();
+              if (r.width < 32 || r.width > 180 || r.height < 24 || r.height > 75) return false;
+              const txt = (el.innerText || "").trim();
+              return txt === c || (c === "−" && (txt === "-" || txt === "−"));
+            }, targetChar);
+            if (!clickedPad) {
+              await page.keyboard.type(ch, { delay: 40 });
+            }
+            await new Promise(r => setTimeout(r, 90));
+          }
         };
 
         if (answer.includes("/")) {
