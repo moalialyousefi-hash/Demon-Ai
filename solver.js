@@ -420,7 +420,7 @@ buildProgressPayload(session, targetHw.title, 'Opening ' + targetHw.title + '...
 const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths. Carefully read all numbers, fractions, units, and rounding instructions. Always write fractions as numerator/denominator like 13/24 (never just the top number). Always write fractions as numerator/denominator like 13/24 (never just the top number). Always write fractions as numerator/denominator like 13/24 (never just the top number). Solve step-by-step internally, then output ONLY the exact final value or exact multiple-choice button label to enter—never include working, units unless asked, or extra words.";
 
     for (let taskIdx = 0; taskIdx < 6; taskIdx++) {
-      const taskNum = taskIdx + 1;
+      let taskNum = taskIdx + 1;
       if (taskIdx >= tasks.length) tasks.push({ done: 0, total: 6 });
 
       const onQuestionAlready = await page.evaluate((n) => {
