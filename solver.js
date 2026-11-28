@@ -274,6 +274,8 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
     state.step = 'Typing username & password';
     console.log('[STEP]', state.step);
     await new Promise(r => setTimeout(r, 1000));
+    const alreadyIn = await page.evaluate(() => document.body && (document.body.innerText.includes("Hey ") || document.body.innerText.includes("Homework due"))).catch(() => false);
+    if (alreadyIn) return;
     for (let w = 0; w < 4; w++) {
       try {
         await page.waitForSelector('input[type="password"]', { visible: true, timeout: 4000 });
