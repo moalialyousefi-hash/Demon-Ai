@@ -145,8 +145,7 @@ function makeEmojiBar(done, total) {
 function buildProgressPayload(session, taskTitle, statusText, tasks, extraFiles = []) {
   const lines = (tasks || []).map((t, i) => {
     const pct = t.total > 0 ? Math.round((t.done / t.total) * 100) : 0;
-    const filled = Math.round(pct / 10);
-    const bar = "🟩".repeat(filled) + "⬛".repeat(10 - filled);
+    const bar = typeof makeBar === "function" ? makeBar(t.done, t.total) : ("🟩".repeat(Math.round(pct / 10)) + "⬛".repeat(10 - Math.round(pct / 10)));
     return `**Task ${i + 1}** (${t.done}/${t.total}) ${bar} **${pct}%**`;
   });
 
