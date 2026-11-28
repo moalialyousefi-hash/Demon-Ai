@@ -250,8 +250,8 @@ client.on('interactionCreate', async (interaction) => {
         )
         .addActionRowComponents(
           new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('join_queue_btn').setLabel('Join Queue').setEmoji('▷').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('saved_account_btn').setLabel('Join Queue With Saved Details').setEmoji('▷').setStyle(ButtonStyle.Success)
+            new ButtonBuilder().setCustomId('join_queue_btn').setLabel('▷ Join Queue').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('saved_account_btn').setLabel('▷ Join Queue With Saved Details').setStyle(ButtonStyle.Success)
           ),
           new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('help_btn').setLabel('Help & FAQ').setEmoji('❓').setStyle(ButtonStyle.Secondary),
@@ -275,7 +275,7 @@ client.on('interactionCreate', async (interaction) => {
         )
         .addActionRowComponents(
           new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('open_sparx_modal').setLabel('Sparx Login').setEmoji('▷').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('open_sparx_modal').setLabel('▷ Sparx Login').setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId('open_ms_modal').setLabel('Microsoft Login').setEmoji('1525932056025235496').setStyle(ButtonStyle.Success)
           )
         );
