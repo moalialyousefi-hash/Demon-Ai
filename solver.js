@@ -525,18 +525,31 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           await new Promise(r => setTimeout(r, 700));
         }
         if (isBookwork) {
-          const codeNeeded = await page.evaluate(() => {
-            const m = document.body.innerText.match(/Bookwork code:\s*([A-Z0-9]+)/i);
-            return m ? m.at(1) : null;
-          }).catch(() => null);
-          if (codeNeeded && bookworkLog[codeNeeded]) {
-            await scanAndClick(page, (el, ans) => el.tagName === "BUTTON" && (el.innerText || "").includes(ans), bookworkLog[codeNeeded]);
-            await new Promise(r => setTimeout(r, 800));
-            continue;
+            const codeNeeded = await page.evaluate(() => {
+              const m = document.body.innerText.match(/Bookwork\s+(?:code:\s*)?([0-9]+[A-Z]|[A-Z0-9]+)/i);
+              return m ? m.at(1) : null;
+            }).catch(() => null);
+            const loggedAns = (codeNeeded && bookworkLog[codeNeeded]) ? bookworkLog[codeNeeded] : Object.values(bookworkLog).at(-1);
+            if (loggedAns) {
+              const normTarget = String(loggedAns).replace(/\s+/g, "").toLowerCase();
+              await scanAndClick(page, (el, target) => {
+                const r = el.getBoundingClientRect();
+                if (r.width < 60 || r.height < 40 || r.top < 140 || r.top > 520) return false;
+                const flat = (el.innerText || "").trim().replace(/(\d+)\s*\n\s*(\d+)/g, "$1/$2").replace(/\s+/g, "").toLowerCase();
+                return flat === target || flat.startsWith(target);
+              }, normTarget);
+              await new Promise(r => setTimeout(r, 400));
+              await scanAndClick(page, (el) => {
+                if (el.tagName !== "BUTTON") return false;
+                const t = (el.innerText || "").trim().toLowerCase();
+                return t === "submit" || t.startsWith("submit");
+              });
+              await new Promise(r => setTimeout(r, 1000));
+              continue;
+            }
           }
-        }
 
-        const alreadyCorrect = await page.evaluate(() => {
+          const alreadyCorrect = await page.evaluate(() => {
           if (!document.body) return false;
           const txt = document.body.innerText || "";
           if (txt.includes("already got this question correct")) return true;
