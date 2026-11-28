@@ -475,7 +475,19 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           const m = (document.body ? document.body.innerText : "").match(new RegExp("\\b(" + n + "[A-Z])\\b"));
           return m ? m.at(1) : null;
         }, taskNum).catch(() => null);
-        const qCode = realQ || (taskNum + String.fromCharCode(65 + i));
+        const detectedTab = await page.evaluate(() => {
+          const tabs = Array.from(document.querySelectorAll("a, button, div, span")).filter(el => {
+            const r = el.getBoundingClientRect();
+            const t = (el.innerText || "").trim();
+            return r.top < 140 && r.width > 24 && r.width < 110 && /^\d+[A-Z]$/.test(t);
+          });
+          const active = tabs.find(el => {
+            const bg = window.getComputedStyle(el).backgroundColor;
+            return bg && (bg.includes("26, 54") || bg.includes("30, 58") || bg.includes("23, 37") || bg.includes("15, 23") || bg.includes("31, 41"));
+          });
+          return active ? (active.innerText || "").trim() : null;
+        }).catch(() => null);
+        const qCode = detectedTab || (taskNum + String.fromCharCode(65 + q));
         if (qCode === lastQCode) {
           sameQCount++;
           if (sameQCount >= 2) {
@@ -659,7 +671,13 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
             }
           }
         if (currentCode) bookworkLog[currentCode] = answer;
-        await dmMsg.edit({ ...buildProgressPayload(session, targetHw.title, "Entering " + qCode + " (" + answer.slice(0, 25) + ")...", tasks), files: [{ attachment: Buffer.from(shot, "base64"), name: qCode + ".png" }] }).catch(() => {});
+        await scanAndClick(page, (el) => {
+            const r = el.getBoundingClientRect();
+            const t = (el.innerText || "").trim().toLowerCase();
+            return t === "answer" && r.top > 200 && el.children.length <= 2;
+          });
+          await new Promise(r => setTimeout(r, 700));
+          await dmMsg.edit({ ...buildProgressPayload(session, targetHw.title, "Entering " + qCode + " (" + answer.slice(0, 25) + ")...", tasks), files: [{ attachment: Buffer.from(shot, "base64"), name: qCode + ".png" }] }).catch(() => {});
         await new Promise(r => setTimeout(r, delayMs));
 
 
