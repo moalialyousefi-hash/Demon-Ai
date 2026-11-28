@@ -512,6 +512,12 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           }
         }
 
+        const alreadyCorrect = await page.evaluate(() => document.body && document.body.innerText.includes("already got this question correct")).catch(() => false);
+        if (alreadyCorrect) {
+          await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "keep going");
+          await new Promise(r => setTimeout(r, 900));
+          continue;
+        }
         const shot = await page.screenshot({ encoding: "base64" }).catch(() => null);
         if (!shot) { await new Promise(r => setTimeout(r, 1000)); continue; }
           const qText = await page.evaluate(() => {
@@ -713,7 +719,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
         await scanAndClick(page, (el) => {
           if (el.tagName !== "BUTTON") return false;
           const t = (el.innerText || "").trim().toLowerCase();
-          return t === "next" || t === "continue" || t === "next question" || t === "try again";
+          return t === "next" || t === "continue" || t === "keep going" || t === "next question" || t === "try again";
         });
         await new Promise(r => setTimeout(r, 1000));
         totalSolvedCount++;
