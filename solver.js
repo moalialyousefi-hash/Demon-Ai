@@ -492,29 +492,34 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
         } else {
           let res;
           try {
+            const modelsList = await groq.models.list().catch(() => ({ data: [] }));
+            const visionModel = (modelsList.data || []).map(m => m.id).find(id => /vision|scout|maverick|qwen.*vl|pixtral|llava/i.test(id)) || "meta-llama/llama-4-scout-17b-16e-instruct";
             res = await groq.chat.completions.create({
-              model: "qwen/qwen3.8-27b",
+              model: visionModel,
               messages: [
                 { role: "system", content: sysPrompt + boxHint },
-                { role: "user", content: [{ type: "text", text: "Solve this Sparx Maths question accurately. Output ONLY the exact answer to enter or click." }, { type: "image_url", image_url: { url: "data:image/png;base64," + shot } }] }
+                { role: "user", content: [{ type: "text", text: "Solve this Sparx Maths question carefully. Do the math step by step internally, then output ONLY the exact final answer (no repeated digits, no words)." }, { type: "image_url", image_url: { url: "data:image/png;base64," + shot } }] }
               ],
-              temperature: 0.1,
-              max_tokens: 120
+              temperature: 0.0,
+              max_tokens: 40
             });
           } catch (visionErr) {
             const qText = await page.evaluate(() => {
-              const raw = document.body ? document.body.innerText : "";
-              return raw.replace(/(\d+)\s*\n\s*(\d+)/g, "$1/$2").replace(/Enter number/gi, "").slice(0, 1800);
+              const clone = document.body.cloneNode(true);
+              clone.querySelectorAll("img[alt]").forEach(img => {
+                if (img.alt) img.replaceWith(" " + img.alt + " ");
+              });
+              return (clone.innerText || "").replace(/(\d+)\s*\n\s*(\d+)/g, "$1/$2").replace(/Enter number/gi, "").slice(0, 1800);
             }).catch(() => "");
             try {
               res = await groq.chat.completions.create({
                 model: "llama-3.3-70b-versatile",
                 messages: [
                   { role: "system", content: sysPrompt + boxHint },
-                  { role: "user", content: "Solve this Sparx Maths question from the page text and output ONLY the exact final answer:\n\n" + qText }
+                  { role: "user", content: "Solve this UK GCSE/KS3 Sparx Maths question accurately. Output ONLY the exact final number or fraction (never repeat digits like 11111111):\n\n" + qText }
                 ],
-                temperature: 0.1,
-                max_tokens: 120
+                temperature: 0.0,
+                max_tokens: 40
               });
             } catch (apiErr) {
               throw new Error("Groq AI (" + (apiErr.status || "ERR") + "): " + apiErr.message);
