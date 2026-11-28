@@ -494,7 +494,9 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           let res;
           try {
             const modelsList = await groq.models.list().catch(() => ({ data: [] }));
-            const allModels = (modelsList.data || []).map(m => m.id).filter(id => !/whisper|tts|guard|distil/i.test(id));
+            var allModels = (modelsList.data || []).map(m => m.id).filter(id => !/whisper|tts|guard|distil/i.test(id));
+            var allModels = (modelsList.data || []).map(m => m.id).filter(id => !/whisper|tts|guard|distil/i.test(id));
+            var allModels = (modelsList.data || []).map(m => m.id).filter(id => !/whisper|tts|guard|distil/i.test(id));
             const visionModel = (modelsList.data || []).map(m => m.id).find(id => /vision|scout|maverick|qwen.*vl|pixtral|llava/i.test(id)) || "meta-llama/llama-4-scout-17b-16e-instruct";
             res = await groq.chat.completions.create({
               model: visionModel,
