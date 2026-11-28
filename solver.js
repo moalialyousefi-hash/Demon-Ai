@@ -642,26 +642,57 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
             if (!clickedPad) {
               await page.keyboard.type(ch, { delay: 45 });
             }
-            await new Promise(r => setTimeout(r, 120));
+            await new Promise(r => setTimeout(r, 110));
           }
         };
+
+        // Find all visible answer boxes sorted top-to-bottom (including custom "Enter number" divs and inputs)
+        const answerBoxes = await page.evaluate(() => {
+          const nodes = Array.from(document.querySelectorAll("input, [role=\"textbox\"], div, span")).filter(el => {
+            const r = el.getBoundingClientRect();
+            const txt = (el.innerText || "").trim();
+            const isInput = el.tagName === "INPUT" && el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio";
+            const isPlaceholderBox = txt === "Enter number" && el.children.length === 0;
+            return (isInput || isPlaceholderBox) && r.left < 460 && r.width > 40 && r.height > 16;
+          }).map(el => {
+            const r = el.getBoundingClientRect();
+            return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+          }).sort((a, b) => a.y - b.y);
+
+          const unique = [];
+          for (const b of nodes) {
+            if (!unique.some(u => Math.abs(u.y - b.y) < 18 && Math.abs(u.x - b.x) < 25)) unique.push(b);
+          }
+          return unique;
+        }).catch(() => []);
 
         if (answer.includes("/")) {
           const parts = answer.split("/");
           const num = (parts.at(0) || "").trim();
           const den = (parts.at(1) || "").trim();
-          if (visInputs.length >= 1) await realMouseClick(page, visInputs.at(0).x, visInputs.at(0).y);
+
+          // Click top numerator box and enter numerator
+          if (answerBoxes.length >= 1) {
+            await realMouseClick(page, answerBoxes.at(0).x, answerBoxes.at(0).y);
+            await new Promise(r => setTimeout(r, 150));
+          }
           await enterSparxValue(num);
-          const clickedSecond = await scanAndClick(page, (el) => (el.innerText || "").trim() === "Enter number");
-          if (!clickedSecond && visInputs.length >= 2) await realMouseClick(page, visInputs.at(1).x, visInputs.at(1).y);
-          else if (!clickedSecond) await page.keyboard.press("Enter");
-          await new Promise(r => setTimeout(r, 150));
+
+          // Click lower denominator box ("Enter number") and enter denominator
+          if (answerBoxes.length >= 2) {
+            await realMouseClick(page, answerBoxes.at(1).x, answerBoxes.at(1).y);
+          } else {
+            const clickedSecond = await scanAndClick(page, (el) => (el.innerText || "").trim() === "Enter number");
+            if (!clickedSecond) await page.keyboard.press("Tab");
+          }
+          await new Promise(r => setTimeout(r, 180));
           await enterSparxValue(den);
-          await page.keyboard.press("Enter");
         } else {
-          if (visInputs.length >= 1) await fillReactInput(page, visInputs.at(0), answer);
-          else await enterSparxValue(answer);
-          await page.keyboard.press("Enter");
+          if (answerBoxes.length >= 1) {
+            await realMouseClick(page, answerBoxes.at(0).x, answerBoxes.at(0).y);
+            await new Promise(r => setTimeout(r, 150));
+          }
+          await enterSparxValue(answer);
         }
 
         await page.waitForFunction(() => {
