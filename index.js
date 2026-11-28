@@ -45,12 +45,19 @@ function upsertSavedAccount(userId, account) {
 
 function buildSavedAccountsMenu(userId, selectedIdx = null) {
   const list = getSavedList(userId);
-  const embed = new EmbedBuilder()
-    .setTitle('Saved Accounts')
-    .setDescription(list.length > 0 ? 'Choose a saved login to manage or sign in immediately.' : 'No saved logins yet. Use **Sparx Login** or **Microsoft Login** first!')
-    .setColor('#2B2D31');
+  const container = new ContainerBuilder()
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        "### 💾 Saved Accounts\n" +
+        (list.length > 0
+          ? "Choose a saved login below to manage or sign in immediately."
+          : "No saved logins yet. Press **▶ Join Queue** first!")
+      )
+    );
 
-  if (list.length === 0) return { embeds: [embed], components: [], flags: 64 };
+  if (list.length === 0) {
+    return { components: [container], flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral };
+  }
 
   const menu = new StringSelectMenuBuilder()
     .setCustomId('manage_saved_account_menu')
@@ -65,7 +72,11 @@ function buildSavedAccountsMenu(userId, selectedIdx = null) {
       }))
     );
 
-  return { embeds: [embed], components: [new ActionRowBuilder().addComponents(menu)], flags: 64 };
+  container
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addActionRowComponents(new ActionRowBuilder().addComponents(menu));
+
+  return { components: [container], flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral };
 }
 
 function buildSparxDashboard(session) {
