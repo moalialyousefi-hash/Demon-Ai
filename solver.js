@@ -495,6 +495,12 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
 
         await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "try again");
         const isBookwork = await page.evaluate(() => document.body.innerText.includes("Bookwork check")).catch(() => false);
+        // If already on the Answer entry screen (< Back visible), go back once so AI can scan the full question first!
+        const onAnswerScreen = await page.evaluate(() => Array.from(document.querySelectorAll("button")).some(b => (b.innerText || "").trim() === "Back" || (b.innerText || "").trim() === "< Back")).catch(() => false);
+        if (onAnswerScreen) {
+          await scanAndClick(page, (el) => el.tagName === "BUTTON" && ((el.innerText || "").trim() === "Back" || (el.innerText || "").trim() === "< Back"));
+          await new Promise(r => setTimeout(r, 700));
+        }
         if (isBookwork) {
           const codeNeeded = await page.evaluate(() => {
             const m = document.body.innerText.match(/Bookwork code:\s*([A-Z0-9]+)/i);
@@ -618,15 +624,15 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           for (const ch of str) {
             const clickedPad = await scanAndClick(page, (el, c) => {
               const r = el.getBoundingClientRect();
-              if (r.width < 35 || r.width > 190 || r.height < 28 || r.height > 80) return false;
+              if (r.left < 360 || r.top < 140 || r.width < 36 || r.width > 180 || r.height < 28 || r.height > 75) return false;
               const txt = (el.innerText || "").trim();
               if (c === "-") return txt === "-" || txt === "−";
               return txt === c && el.children.length <= 2;
             }, ch);
             if (!clickedPad) {
-              await page.keyboard.type(ch, { delay: 40 });
+              await page.keyboard.type(ch, { delay: 45 });
             }
-            await new Promise(r => setTimeout(r, 110));
+            await new Promise(r => setTimeout(r, 120));
           }
         };
 
