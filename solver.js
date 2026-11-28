@@ -3,8 +3,8 @@ const OpenAI = require('openai');
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const emojis = require('./emojis.json');
 
-const aiProvider = process.env.OPENROUTER_API_KEY
-  ? new OpenAI({ apiKey: process.env.OPENROUTER_API_KEY.trim(), baseURL: "https://openrouter.ai" })
+const aiProvider = (process.env.OPENROUTER_API_KEY || process.env.OPEN_ROUTER_API_KEY || process.env.OPENROUTER_KEY || Object.values(process.env).find(v => typeof v === "string" && v.trim().startsWith("sk-or-")))
+  ? new OpenAI({ apiKey: (process.env.OPENROUTER_API_KEY || process.env.OPEN_ROUTER_API_KEY || process.env.OPENROUTER_KEY || Object.values(process.env).find(v => typeof v === "string" && v.trim().startsWith("sk-or-"))).trim(), baseURL: "https://openrouter.ai" })
   : new OpenAI({ apiKey: process.env.GROQ_API_KEY, baseURL: "https://groq.com" });
 
 const cookieJar = new Map();
@@ -567,12 +567,12 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
             const gemJson = await gemRes.json();
             if (!gemRes.ok) throw new Error("Gemini (" + gemRes.status + "): " + (gemJson.error?.message || JSON.stringify(gemJson)));
             rawContent = gemJson.candidates?.at(0)?.content?.parts?.map(p => p.text).join("\n") || "";
-          } else if (process.env.OPENROUTER_API_KEY) {
+          } else if ((process.env.OPENROUTER_API_KEY || process.env.OPEN_ROUTER_API_KEY || process.env.OPENROUTER_KEY || Object.values(process.env).find(v => typeof v === "string" && v.trim().startsWith("sk-or-")))) {
             const orRes = await fetch("https://openrouter.ai", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                "Authorization": "Bearer " + process.env.OPENROUTER_API_KEY.trim(),
+                "Authorization": "Bearer " + (process.env.OPENROUTER_API_KEY || process.env.OPEN_ROUTER_API_KEY || process.env.OPENROUTER_KEY || Object.values(process.env).find(v => typeof v === "string" && v.trim().startsWith("sk-or-"))).trim(),
                 "HTTP-Referer": "https://github.com",
                 "X-Title": "Demon-Ai"
               },
