@@ -249,8 +249,8 @@ client.on('interactionCreate', async (interaction) => {
         )
         .addActionRowComponents(
           new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('join_queue_btn').setLabel('Join Queue').setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId('saved_account_btn').setLabel('Saved Login').setStyle(ButtonStyle.Danger)
+            new ButtonBuilder().setCustomId('join_queue_btn').setLabel('▸ Join Queue').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('saved_account_btn').setLabel('▸ Saved Login').setStyle(ButtonStyle.Danger)
           ),
           new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('help_btn').setLabel('Help & FAQ').setStyle(ButtonStyle.Danger),
