@@ -763,11 +763,14 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           const btn = Array.from(document.querySelectorAll("button")).find(b => /submit|check/i.test((b.innerText || "").trim()));
           return btn && !btn.disabled;
         }, { timeout: 2500 }).catch(() => {});
-        await scanAndClick(page, (el) => {
-          if (el.children.length > 2) return false;
+        const clickedSubmit = await scanAndClick(page, (el) => {
+          if (el.tagName !== "BUTTON") return false;
           const t = (el.innerText || "").trim().toLowerCase();
-          return t === "submit" || t === "submit answer" || t === "check";
+          return t === "submit answer" || t === "submit" || t === "check";
         });
+        if (!clickedSubmit) {
+          await page.click('button[class*="_ButtonPrimary_"]').catch(() => {});
+        }
         await new Promise(r => setTimeout(r, 1300));
 
         await scanAndClick(page, (el) => {
