@@ -450,7 +450,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
         const foundTask = await page.evaluate((n) => {
             const labels = Array.from(document.querySelectorAll("div, span, p, h1, h2, h3, h4, a, button")).filter(el => {
               const t = (el.innerText || "").trim();
-              return new RegExp("^Task\\s*" + n + "$", "i").test(t) && el.getBoundingClientRect().width > 0;
+              return new RegExp("^Task\\s*" + n + "\\b", "i").test(t) && el.getBoundingClientRect().width > 0;
             });
             const label = labels.at(0);
             if (!label) return false;
