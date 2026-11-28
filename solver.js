@@ -494,6 +494,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           let res;
           try {
             const modelsList = await groq.models.list().catch(() => ({ data: [] }));
+            const allModels = (modelsList.data || []).map(m => m.id).filter(id => !/whisper|tts|guard|distil/i.test(id));
             const visionModel = (modelsList.data || []).map(m => m.id).find(id => /vision|scout|maverick|qwen.*vl|pixtral|llava/i.test(id)) || "meta-llama/llama-4-scout-17b-16e-instruct";
             res = await groq.chat.completions.create({
               model: visionModel,
@@ -514,7 +515,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
             }).catch(() => "");
             try {
               res = await groq.chat.completions.create({
-                model: "llama-3.3-70b-versatile",
+                model: allModels.find(id => /70b|32b|qwen|llama|gpt/i.test(id)) || allModels.at(0) || "llama-3.1-8b-instant",
                 messages: [
                   { role: "system", content: sysPrompt + boxHint },
                   { role: "user", content: "Solve this UK GCSE/KS3 Sparx Maths question accurately. Output ONLY the exact final number or fraction (never repeat digits like 11111111):\n\n" + qText }
