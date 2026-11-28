@@ -621,7 +621,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
 
 
 
-          const promptText = "You are a UK GCSE/KS3 Sparx Maths solver. Look at the question image and text carefully, show 2 short lines of calculation, then end with FINAL: <exact answer> (e.g. FINAL: 13/24). " + boxHint + "\n\nQuestion text: " + qText;
+          const promptText = "You are an expert UK GCSE/KS3 Sparx Maths solver. Read the question image and text carefully. Always simplify fractions to simplest form (e.g. 6/28 -> 3/14). Show 2 short lines of working, then end with FINAL: <exact answer> (e.g. FINAL: 3/14). " + boxHint + "\n\nQuestion text: " + qText;
           let rawContent = "";
 
           if (process.env.GEMINI_API_KEY) {
@@ -750,12 +750,30 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
         const fillNumericBox = async (box, val) => {
           const str = String(val).trim();
           if (box) {
-            await page.mouse.click(box.x, box.y, { clickCount: 3 });
-            await new Promise(r => setTimeout(r, 120));
-            await page.keyboard.press("Backspace");
+            await page.mouse.click(box.x, box.y);
+            await new Promise(r => setTimeout(r, 140));
+            await page.evaluate((coords, text) => {
+              const el = document.elementFromPoint(coords.x, coords.y);
+              const inp = el && (el.tagName === "INPUT" ? el : el.querySelector("input"));
+              if (inp) {
+                inp.focus();
+                const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+                if (setter) setter.call(inp, "");
+                inp.dispatchEvent(new Event("input", { bubbles: true }));
+              }
+            }, box, str);
+            await new Promise(r => setTimeout(r, 100));
           }
-          await page.keyboard.type(str, { delay: 55 });
-          await new Promise(r => setTimeout(r, 150));
+          await page.keyboard.type(str, { delay: 75 });
+          await page.evaluate((coords) => {
+            const el = document.elementFromPoint(coords.x, coords.y);
+            const inp = el && (el.tagName === "INPUT" ? el : el.querySelector("input"));
+            if (inp) {
+              inp.dispatchEvent(new Event("input", { bubbles: true }));
+              inp.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+          }, box || { x: 0, y: 0 });
+          await new Promise(r => setTimeout(r, 180));
         };
 
         if (answer.includes("/") && numericInputs.length >= 2) {
