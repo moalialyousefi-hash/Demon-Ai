@@ -238,11 +238,11 @@ client.on('interactionCreate', async (interaction) => {
               new TextDisplayBuilder().setContent(
                 "# 🔥 Demon AI • Sparx Autocompleter\n" +
                 "Your ultimate **24/7 AI-powered** Sparx homework assistant.\n" +
-                "Built for speed, accuracy, and hands-free completion across **Sparx Maths, Reader & Science**.\n" +
+                "Built for speed, accuracy, and hands-free completion across **Sparx Reader & Science**.\n" +
                 "Hit `▸ Join Queue` below to link your account and start completing tasks automatically.\n\n" +
                 "__**⚡ Features & Notes**__\n" +
-                "• **Smart Vision AI** — Solves fractions, algebra, and multi-step questions automatically\n" +
-                "• **Auto Bookwork Bypass** — Logs every answer & clears bookwork checks effortlessly\n" +
+                "• **Smart Vision AI** — Reads passages, diagrams, and multi-step questions automatically\n" +
+                "• **Auto Progress & Checks** — Logs every answer & clears checks effortlessly\n" +
                 "• **Live DM Dashboard** — Real-time progress bars and speed controls in your DMs\n" +
                 "• **One-Click Saved Logins** — Works with both standard Sparx & Microsoft 365 accounts"
               )
