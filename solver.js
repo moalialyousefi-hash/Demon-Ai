@@ -526,19 +526,13 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           }
         }
 
-        await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
-        await new Promise(r => setTimeout(r, 600));
-        var numBoxes = await page.evaluate(() => Array.from(document.querySelectorAll("input")).filter(el => { const r = el.getBoundingClientRect(); return el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio" && r.width > 30 && r.height > 12; }).length).catch(() => 1);
-        var boxHint = numBoxes >= 2 ? " CRITICAL: The answer box has TWO fields (top numerator and bottom denominator). You MUST output a fraction in the exact form numerator/denominator (e.g. 13/24), NEVER a single integer." : "";
-        await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
-        await new Promise(r => setTimeout(r, 600));
-        var numBoxes = await page.evaluate(() => Array.from(document.querySelectorAll("input")).filter(el => { const r = el.getBoundingClientRect(); return el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio" && r.width > 30 && r.height > 12; }).length).catch(() => 1);
-        var boxHint = numBoxes >= 2 ? " CRITICAL: The answer box has TWO fields (top numerator and bottom denominator). You MUST output a fraction in the exact form numerator/denominator (e.g. 13/24), NEVER a single integer." : "";
-        await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
-        await new Promise(r => setTimeout(r, 600));
-        var numBoxes = await page.evaluate(() => Array.from(document.querySelectorAll("input")).filter(el => { const r = el.getBoundingClientRect(); return el.type !== "hidden" && el.type !== "checkbox" && el.type !== "radio" && r.width > 30 && r.height > 12; }).length).catch(() => 1);
-        var boxHint = numBoxes >= 2 ? " CRITICAL: The answer box has TWO fields (top numerator and bottom denominator). You MUST output a fraction in the exact form numerator/denominator (e.g. 13/24), NEVER a single integer." : "";
         const shot = await page.screenshot({ encoding: "base64" }).catch(() => null);
+        if (!shot) { await new Promise(r => setTimeout(r, 1000)); continue; }
+        
+        await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
+        await new Promise(r => setTimeout(r, 600));
+        var numBoxes = await page.evaluate(() => Array.from(document.querySelectorAll("input, [role=\"textbox\"]")).filter(el => { const r = el.getBoundingClientRect(); return r.width > 30 && r.height > 12; }).length + ((document.body?.innerText || "").match(/Enter number/g) || []).length).catch(() => 1);
+        var boxHint = numBoxes >= 2 ? " CRITICAL: This question has a fraction answer box (top numerator and bottom denominator). Return a fraction in the form numerator/denominator (e.g. 13/24)." : "";
         if (!shot) { await new Promise(r => setTimeout(r, 1000)); continue; }
         const currentCode = await page.evaluate(() => {
           const m = document.body.innerText.match(/Bookwork code:\s*([A-Z0-9]+)/i);
@@ -645,18 +639,17 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
         const enterSparxValue = async (val) => {
           const str = String(val).trim();
           for (const ch of str) {
-            const targetChar = ch === "-" ? "−" : ch;
             const clickedPad = await scanAndClick(page, (el, c) => {
-              if (el.tagName !== "BUTTON" && el.getAttribute("role") !== "button") return false;
               const r = el.getBoundingClientRect();
-              if (r.width < 32 || r.width > 180 || r.height < 24 || r.height > 75) return false;
+              if (r.width < 35 || r.width > 190 || r.height < 28 || r.height > 80) return false;
               const txt = (el.innerText || "").trim();
-              return txt === c || (c === "−" && (txt === "-" || txt === "−"));
-            }, targetChar);
+              if (c === "-") return txt === "-" || txt === "−";
+              return txt === c && el.children.length <= 2;
+            }, ch);
             if (!clickedPad) {
               await page.keyboard.type(ch, { delay: 40 });
             }
-            await new Promise(r => setTimeout(r, 90));
+            await new Promise(r => setTimeout(r, 110));
           }
         };
 
