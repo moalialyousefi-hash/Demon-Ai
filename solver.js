@@ -442,6 +442,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           buildProgressPayload(session, targetHw.title, "Solving " + qCode + " in Task " + taskNum + "...", tasks)
         );
 
+        await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "try again");
         const isBookwork = await page.evaluate(() => document.body.innerText.includes("Bookwork check")).catch(() => false);
         if (isBookwork) {
           const codeNeeded = await page.evaluate(() => {
@@ -616,7 +617,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
         await scanAndClick(page, (el) => {
           if (el.tagName !== "BUTTON") return false;
           const t = (el.innerText || "").trim().toLowerCase();
-          return t === "next" || t === "continue" || t === "next question";
+          return t === "next" || t === "continue" || t === "next question" || t === "try again";
         });
         await new Promise(r => setTimeout(r, 1000));
       }
