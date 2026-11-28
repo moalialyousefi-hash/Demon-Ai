@@ -544,8 +544,8 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           let res;
           const modelsList = await aiProvider.models.list().catch(() => ({ data: [] }));
           var allModels = (modelsList.data || []).map(m => m.id).filter(id => !/whisper|tts|guard|distil/i.test(id));
-          const visionModel = process.env.OPENROUTER_API_KEY ? "qwen/qwen2.5-vl-72b-instruct:free" : allModels.find(id => /vision|scout|maverick|qwen.*vl|pixtral|llava/i.test(id));
-          const chatModel = process.env.OPENROUTER_API_KEY ? "deepseek/deepseek-r1:free" : (allModels.find(id => /70b|32b|qwen|llama|gpt/i.test(id)) || allModels.at(0) || "llama-3.1-8b-instant");
+          const visionModel = process.env.OPENROUTER_API_KEY ? "openrouter/free" : allModels.find(id => /vision|scout|maverick|qwen.*vl|pixtral|llava/i.test(id));
+          const chatModel = process.env.OPENROUTER_API_KEY ? "openrouter/free" : (allModels.find(id => /70b|32b|qwen|llama|gpt/i.test(id)) || allModels.at(0) || "llama-3.1-8b-instant");
 
           const qText = await page.evaluate(() => {
             const clone = document.body.cloneNode(true);
