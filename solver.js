@@ -18,6 +18,7 @@ async function getFastBrowser() {
   console.log("[STEP] Launching warm Chromium...");
   sharedBrowser = await puppeteer.launch({
     headless: true,
+    userDataDir: "/tmp/sparx_chrome_cache",
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     protocolTimeout: 45000,
     args: [
@@ -57,13 +58,34 @@ async function smoothMoveCursor(page, targetX, targetY) {
   lastCursorY = targetY;
 }
 
+async function humanType(page, text) {
+  for (const ch of String(text)) {
+    await page.keyboard.type(ch, { delay: 25 + Math.floor(Math.random() * 65) });
+  }
+}
+
+async function fillReactInput(page, box, value) {
+  await realMouseClick(page, box.x, box.y);
+  await new Promise(r => setTimeout(r, 90 + Math.floor(Math.random() * 90)));
+  await page.evaluate((x, y, val) => {
+    const el = document.elementFromPoint(x, y)?.closest("input") || document.activeElement;
+    if (el && el.tagName === "INPUT") {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+      if (setter) setter.call(el, "");
+      else el.value = "";
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  }, box.x, box.y, value).catch(() => {});
+  await humanType(page, value);
+}
+
 async function realMouseClick(page, x, y) {
   await smoothMoveCursor(page, x, y);
-  await new Promise(r => setTimeout(r, 45));
+  await new Promise(r => setTimeout(r, 80 + Math.floor(Math.random() * 110)));
   await page.mouse.down().catch(() => {});
-  await new Promise(r => setTimeout(r, 35));
+  await new Promise(r => setTimeout(r, 30 + Math.floor(Math.random() * 40)));
   await page.mouse.up().catch(() => {});
-  await new Promise(r => setTimeout(r, 90));
+  await new Promise(r => setTimeout(r, 85 + Math.floor(Math.random() * 75)));
 }
 
 async function scanAndClick(page, matcherFn, arg = null) {
@@ -561,22 +583,19 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           return unique;
         }).catch(() => []);
 
-        if (visInputs.length >= 2 && answer.includes("/")) {
+        const mixedMatch = answer.match(/^(-?\d+)\s+(\d+)\/(\d+)$/);
+        if (visInputs.length >= 3 && mixedMatch) {
+          await fillReactInput(page, visInputs.at(0), mixedMatch.at(1));
+          await fillReactInput(page, visInputs.at(1), mixedMatch.at(2));
+          await fillReactInput(page, visInputs.at(2), mixedMatch.at(3));
+          await page.keyboard.press("Enter");
+        } else if (visInputs.length >= 2 && answer.includes("/")) {
           const parts = answer.split("/");
-          const num = (parts.at(0) || "").trim();
-          const den = (parts.at(1) || "").trim();
-
-          await realMouseClick(page, visInputs.at(0).x, visInputs.at(0).y);
-          await new Promise(r => setTimeout(r, 140));
-          await page.keyboard.down("Control"); await page.keyboard.press("a"); await page.keyboard.up("Control");
-          await page.keyboard.press("Backspace");
-          await page.keyboard.type(num, { delay: 35 });
-
-          await realMouseClick(page, visInputs.at(1).x, visInputs.at(1).y);
-          await new Promise(r => setTimeout(r, 140));
-          await page.keyboard.down("Control"); await page.keyboard.press("a"); await page.keyboard.up("Control");
-          await page.keyboard.press("Backspace");
-          await page.keyboard.type(den, { delay: 35 });
+          await fillReactInput(page, visInputs.at(0), (parts.at(0) || "").trim());
+          await fillReactInput(page, visInputs.at(1), (parts.at(1) || "").trim());
+          await page.keyboard.press("Enter");
+        } else if (visInputs.length >= 1) {
+          await fillReactInput(page, visInputs.at(0), answer);
           await page.keyboard.press("Enter");
         } else if (visInputs.length >= 1) {
           await realMouseClick(page, visInputs.at(0).x, visInputs.at(0).y);
@@ -609,7 +628,10 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           }
         }
 
-        await new Promise(r => setTimeout(r, 300));
+        await page.waitForFunction(() => {
+          const btn = Array.from(document.querySelectorAll("button")).find(b => /submit|check/i.test((b.innerText || "").trim()));
+          return btn && !btn.disabled;
+        }, { timeout: 2500 }).catch(() => {});
         await scanAndClick(page, (el) => {
           if (el.tagName !== "BUTTON") return false;
           const t = (el.innerText || "").trim().toLowerCase();
