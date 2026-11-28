@@ -677,6 +677,12 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
             return t === "answer" && r.top > 200 && el.children.length <= 2;
           });
           await new Promise(r => setTimeout(r, 700));
+          await scanAndClick(page, (el) => {
+            const r = el.getBoundingClientRect();
+            const t = (el.innerText || "").trim().toLowerCase();
+            return t === "answer" && r.top > 200 && el.children.length <= 2;
+          });
+          await new Promise(r => setTimeout(r, 700));
           await dmMsg.edit({ ...buildProgressPayload(session, targetHw.title, "Entering " + qCode + " (" + answer.slice(0, 25) + ")...", tasks), files: [{ attachment: Buffer.from(shot, "base64"), name: qCode + ".png" }] }).catch(() => {});
         await new Promise(r => setTimeout(r, delayMs));
 
