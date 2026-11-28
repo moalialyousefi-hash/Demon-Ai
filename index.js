@@ -344,19 +344,26 @@ saveState();
 return await interaction.update({ ...buildSavedAccountsMenu(interaction.user.id), embeds: [] });
 }
 if (interaction.customId === 'help_btn') {
-const helpEmbed = new EmbedBuilder()
-.setTitle('Demon AI • Help & Guide')
-.setThumbnail(client.user.displayAvatarURL())
-.setDescription(
-'1. Sign In\nClick ▶ Sparx Login (standard login) or <:microsoft:1525932056025235496> Microsoft Login (Microsoft 365) and enter your school details.\n\n' +
-'2. Choose Homework & Speed\nPick your due homework from the dropdown, select Quick, Normal, or Human speed, and click ▶ Start Selected.\n\n' +
-'3. Live DM Progress\nKeep your Direct Messages open so Demon AI can send live task progress bars as it solves each question.'
-)
-.setFooter({ text: 'Demon AI • Sparx Maths Assistant' })
-.setColor('#1DB954');
-return await interaction.reply({ embeds: [helpEmbed], flags: 64 });
-}
-if (interaction.customId === 'toggle_completed_btn') {
+      const helpContainer = new ContainerBuilder()
+        .addSectionComponents(
+          new SectionBuilder()
+            .addTextDisplayComponents(
+              new TextDisplayBuilder().setContent(
+                "## ❓ Demon AI • Help & Guide\n" +
+                "**1. Join Queue**\nClick **▶ Join Queue** and choose **Sparx Login** or **Microsoft Login**, then enter your school details.\n\n" +
+                "**2. Choose Homework & Speed**\nPick your due homework from the dropdown, select Quick, Normal, or Human speed, and click **▶ Start Selected**.\n\n" +
+                "**3. Live DM Progress**\nKeep your Direct Messages open so Demon AI can send live task progress bars as it solves each question."
+              )
+            )
+            .setThumbnailAccessory(new ThumbnailBuilder().setURL(client.user.displayAvatarURL()))
+        )
+        .addSeparatorComponents(new SeparatorBuilder())
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent("-# Demon AI • Sparx Maths Assistant")
+        );
+      return await interaction.reply({ flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral, components: [helpContainer] });
+    }
+    if (interaction.customId === 'toggle_completed_btn') {
 const session = userSessions.get(interaction.user.id);
 if (!session) return await interaction.reply({ content: 'Session expired. Log in again!', flags: 64 });
 session.showCompleted = !session.showCompleted;
@@ -372,11 +379,14 @@ session.selectedHwId = fallback.id;
 }
 if (!session.selectedHwId) return await interaction.reply({ content: 'Select a homework first!', flags: 64 });
 const targetHw = session.homeworks.find(h => h.id === session.selectedHwId);
-await interaction.update({
-content: 'Your task has started in Direct Messages 💬',
-embeds: [],
-components: []
-});
+const startedContainer = new ContainerBuilder()
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent("### 💬 Your task has started in Direct Messages!")
+        );
+      await interaction.update({
+        flags: MessageFlags.IsComponentsV2,
+        components: [startedContainer]
+      });
 runHomeworkInDM(interaction.user, session, targetHw).catch(async () => {
 await interaction.followUp({
 content: 'I could not send you a DM! Please enable Direct Messages from server members in your Discord Privacy Settings.',
