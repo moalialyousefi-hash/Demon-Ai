@@ -605,49 +605,38 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           return unique;
         }).catch(() => []);
 
-        const mixedMatch = answer.match(/^(-?\d+)\s+(\d+)\/(\d+)$/);
-        if (visInputs.length >= 3 && mixedMatch) {
-          await fillReactInput(page, visInputs.at(0), mixedMatch.at(1));
-          await fillReactInput(page, visInputs.at(1), mixedMatch.at(2));
-          await fillReactInput(page, visInputs.at(2), mixedMatch.at(3));
-          await page.keyboard.press("Enter");
-        } else if (visInputs.length >= 2 && answer.includes("/")) {
+        const enterSparxValue = async (val) => {
+          const str = String(val).trim();
+          await page.keyboard.down("Control"); await page.keyboard.press("a"); await page.keyboard.up("Control");
+          await page.keyboard.press("Backspace");
+          for (const ch of str) {
+            const clickedPad = await scanAndClick(page, (el, c) => {
+              if (el.tagName !== "BUTTON" && el.getAttribute("role") !== "button") return false;
+              return (el.innerText || "").trim() === c;
+            }, ch);
+            if (!clickedPad) {
+              await page.keyboard.type(ch, { delay: 35 });
+            }
+            await new Promise(r => setTimeout(r, 80));
+          }
+        };
+
+        if (answer.includes("/")) {
           const parts = answer.split("/");
-          await fillReactInput(page, visInputs.at(0), (parts.at(0) || "").trim());
-          await fillReactInput(page, visInputs.at(1), (parts.at(1) || "").trim());
-          await page.keyboard.press("Enter");
-        } else if (visInputs.length >= 1) {
-          await fillReactInput(page, visInputs.at(0), answer);
-          await page.keyboard.press("Enter");
-        } else if (visInputs.length >= 1) {
-          await realMouseClick(page, visInputs.at(0).x, visInputs.at(0).y);
-          await new Promise(r => setTimeout(r, 140));
-          await page.keyboard.down("Control"); await page.keyboard.press("a"); await page.keyboard.up("Control");
-          await page.keyboard.press("Backspace");
-          await page.keyboard.type(answer, { delay: 35 });
-          await page.keyboard.press("Enter");
-        } else if (visInputs.length >= 1) {
-          await realMouseClick(page, visInputs.at(0).x, visInputs.at(0).y);
+          const num = (parts.at(0) || "").trim();
+          const den = (parts.at(1) || "").trim();
+          if (visInputs.length >= 1) await realMouseClick(page, visInputs.at(0).x, visInputs.at(0).y);
+          await enterSparxValue(num);
+          const clickedSecond = await scanAndClick(page, (el) => (el.innerText || "").trim() === "Enter number");
+          if (!clickedSecond && visInputs.length >= 2) await realMouseClick(page, visInputs.at(1).x, visInputs.at(1).y);
+          else if (!clickedSecond) await page.keyboard.press("Enter");
           await new Promise(r => setTimeout(r, 150));
-          await page.keyboard.down("Control"); await page.keyboard.press("a"); await page.keyboard.up("Control");
-          await page.keyboard.press("Backspace");
-          await page.keyboard.type(answer, { delay: 30 });
+          await enterSparxValue(den);
           await page.keyboard.press("Enter");
         } else {
-          const clickedExact = await scanAndClick(page, (el, ans) => {
-            if (el.tagName !== "BUTTON" && el.getAttribute("role") !== "button") return false;
-            return (el.innerText || "").trim().toLowerCase() === ans.toLowerCase();
-          }, answer);
-          if (!clickedExact) {
-            const parts = answer.includes(" ") ? answer.split(/\s+/) : answer.split("");
-            for (const part of parts) {
-              await scanAndClick(page, (el, p) => {
-                if (el.tagName !== "BUTTON" && el.getAttribute("role") !== "button") return false;
-                return (el.innerText || "").trim().toLowerCase() === p.toLowerCase();
-              }, part);
-              await new Promise(r => setTimeout(r, 200));
-            }
-          }
+          if (visInputs.length >= 1) await fillReactInput(page, visInputs.at(0), answer);
+          else await enterSparxValue(answer);
+          await page.keyboard.press("Enter");
         }
 
         await page.waitForFunction(() => {
