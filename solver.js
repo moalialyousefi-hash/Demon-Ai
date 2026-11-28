@@ -535,7 +535,15 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           }
         }
 
-        const alreadyCorrect = await page.evaluate(() => document.body && document.body.innerText.includes("already got this question correct")).catch(() => false);
+        const alreadyCorrect = await page.evaluate(() => {
+          if (!document.body) return false;
+          const txt = document.body.innerText || "";
+          if (txt.includes("already got this question correct")) return true;
+          return Array.from(document.querySelectorAll("button, a, div, span")).some(el => {
+            const r = el.getBoundingClientRect();
+            return r.width > 60 && r.height > 20 && (el.innerText || "").trim().toLowerCase() === "keep going" && el.children.length <= 2;
+          });
+        }).catch(() => false);
         if (alreadyCorrect) {
           await scanAndClick(page, (el) => {
           const t = (el.innerText || "").trim().toLowerCase();
