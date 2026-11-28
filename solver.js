@@ -514,7 +514,11 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
 
         const shot = await page.screenshot({ encoding: "base64" }).catch(() => null);
         if (!shot) { await new Promise(r => setTimeout(r, 1000)); continue; }
-        
+          const qText = await page.evaluate(() => {
+            const clone = document.body.cloneNode(true);
+            clone.querySelectorAll("img[alt]").forEach(img => { if (img.alt) img.replaceWith(" " + img.alt + " "); });
+            return (clone.innerText || "").replace(/(\d+)\s*\n\s*(\d+)/g, "$1/$2").slice(0, 1800);
+          }).catch(() => "");
         await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
         await new Promise(r => setTimeout(r, 600));
         var numBoxes = await page.evaluate(() => Array.from(document.querySelectorAll("input, [role=\"textbox\"]")).filter(el => { const r = el.getBoundingClientRect(); return r.width > 30 && r.height > 12; }).length + ((document.body?.innerText || "").match(/Enter number/g) || []).length).catch(() => 1);
@@ -542,11 +546,11 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           answer = gData.candidates.at(0).content.parts.at(0).text.trim();
         } else {
           let res;
-          const qText = await page.evaluate(() => {
-            const clone = document.body.cloneNode(true);
-            clone.querySelectorAll("img[alt]").forEach(img => { if (img.alt) img.replaceWith(" " + img.alt + " "); });
-            return (clone.innerText || "").replace(/(\d+)\s*\n\s*(\d+)/g, "$1/$2").slice(0, 1800);
-          }).catch(() => "");
+
+
+
+
+
           const promptText = "You are a UK GCSE/KS3 Sparx Maths solver. Look at the question image and text carefully, show 2 short lines of calculation, then end with FINAL: <exact answer> (e.g. FINAL: 13/24). " + boxHint + "\n\nQuestion text: " + qText;
           let rawContent = "";
 
@@ -605,7 +609,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
         await dmMsg.edit({ ...buildProgressPayload(session, targetHw.title, "Entering " + qCode + " (" + answer.slice(0, 25) + ")...", tasks), files: [{ attachment: Buffer.from(shot, "base64"), name: qCode + ".png" }] }).catch(() => {});
         await new Promise(r => setTimeout(r, delayMs));
 
-        await scanAndClick(page, (el) => el.tagName === "BUTTON" && (el.innerText || "").trim().toLowerCase() === "answer");
+
         await new Promise(r => setTimeout(r, 700));
 
         const visInputs = await page.evaluate(() => {
