@@ -40,6 +40,26 @@ async function getFastBrowser() {
 let lastCursorX = 640;
 let lastCursorY = 360;
 
+async function hardenPage(page) {
+  await page.evaluateOnNewDocument(() => {
+    Object.defineProperty(navigator, "webdriver", { get: () => false });
+    Object.defineProperty(navigator, "languages", { get: () => ["en-GB", "en"] });
+    window.chrome = window.chrome || { runtime: {} };
+  }).catch(() => {});
+  await page.setExtraHTTPHeaders({ "Accept-Language": "en-GB,en;q=0.9" }).catch(() => {});
+  page.on("dialog", d => d.accept().catch(() => {}));
+  await page.setRequestInterception(true).catch(() => {});
+  page.on("request", req => {
+    const url = req.url();
+    const type = req.resourceType();
+    if (type === "media" || /google-analytics|doubleclick|sentry|hotjar|segment/i.test(url)) {
+      req.abort().catch(() => {});
+    } else {
+      req.continue().catch(() => {});
+    }
+  });
+}
+
 async function smoothMoveCursor(page, targetX, targetY) {
   const steps = 18;
   const startX = lastCursorX;
@@ -363,6 +383,7 @@ if (freshCookies.length > 0) cookieJar.set(cacheKey, freshCookies);
 console.log('[STEP] Login finished!');
 }
 async function loginToSparx(page, school, username, password, isMicrosoft) {
+  await hardenPage(page);
 const state = { step: 'Launching Chrome' };
 let timer;
 const timeoutPromise = new Promise((_, reject) => {
@@ -408,7 +429,8 @@ let page;
 const bookworkLog = {}; 
 try {
 browser = await getFastBrowser();
-page = await browser.newPage();
+const ctx = browser.createBrowserContext ? await browser.createBrowserContext() : browser;
+    page = await ctx.newPage();
 await loginToSparx(page, session.school, session.username, session.password, session.isMicrosoft);
 await dmMsg.edit(
 buildProgressPayload(session, targetHw.title, 'Opening ' + targetHw.title + '...', tasks)
