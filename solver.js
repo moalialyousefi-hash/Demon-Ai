@@ -331,6 +331,7 @@ async function loginToSparxCore(page, school, username, password, isMicrosoft, s
   state.step = 'Loading Homework dashboard';
   console.log('[STEP]', state.step);
   let lastQCode = "";
+  let qAttemptTracker = {};
   let totalSolvedCount = 0;
       let sameQCount = 0;
        
@@ -518,6 +519,19 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           await new Promise(r => setTimeout(r, 900));
           continue;
         }
+        qAttemptTracker[qCode] = (qAttemptTracker[qCode] || 0) + 1;
+        if (qAttemptTracker[qCode] > 2) {
+          const nextTab = qCode.replace(/([A-Z])$/, (_, ch) => String.fromCharCode(ch.charCodeAt(0) + 1));
+          const skipped = await scanAndClick(page, (el, target) => {
+            const r = el.getBoundingClientRect();
+            return r.top < 140 && (el.innerText || "").trim().startsWith(target);
+          }, nextTab);
+          if (skipped) {
+            await dmMsg.edit(buildProgressPayload(session, targetHw.title, "Skipped " + qCode + " -> " + nextTab + "...", tasks)).catch(() => {});
+            await new Promise(r => setTimeout(r, 900));
+            continue;
+          }
+        }
         const shot = await page.screenshot({ encoding: "base64" }).catch(() => null);
         if (!shot) { await new Promise(r => setTimeout(r, 1000)); continue; }
           const qText = await page.evaluate(() => {
@@ -610,7 +624,19 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           answer = (m ? m.at(1) : rawContent.split(/\r?\n/).pop()).replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "$1/$2").replace(/\s*\/\s*/g, "/").replace(/^[\`"\x27]+|[\`"\x27.]+$/g, "").trim();
         }
 
-        answer = answer.replace(/^[`"']+|[`"'.]+$/g, "").trim();
+        answer = answer.replace(/^[\`"\x27]+|[\`"\x27.]+$/g, "").trim();
+          if (!answer) {
+            const nextTab = qCode.replace(/([A-Z])$/, (_, ch) => String.fromCharCode(ch.charCodeAt(0) + 1));
+            const skipped = await scanAndClick(page, (el, target) => {
+              const r = el.getBoundingClientRect();
+              return r.top < 140 && (el.innerText || "").trim().startsWith(target);
+            }, nextTab);
+            if (skipped) {
+              await dmMsg.edit(buildProgressPayload(session, targetHw.title, "Skipped " + qCode + " -> " + nextTab + "...", tasks)).catch(() => {});
+              await new Promise(r => setTimeout(r, 900));
+              continue;
+            }
+          }
         if (currentCode) bookworkLog[currentCode] = answer;
         await dmMsg.edit({ ...buildProgressPayload(session, targetHw.title, "Entering " + qCode + " (" + answer.slice(0, 25) + ")...", tasks), files: [{ attachment: Buffer.from(shot, "base64"), name: qCode + ".png" }] }).catch(() => {});
         await new Promise(r => setTimeout(r, delayMs));
