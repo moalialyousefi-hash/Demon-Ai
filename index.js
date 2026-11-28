@@ -235,7 +235,7 @@ client.on('interactionCreate', async (interaction) => {
           new SectionBuilder()
             .addTextDisplayComponents(
               new TextDisplayBuilder().setContent(
-                "## `Demon` Learning Platform\n" +
+                "## `Demon AI` Learning Platform\n" +
                 "**FAQ ↗**\n" +
                 "Your gateway to automated Sparx homework assistance.\n" +
                 "Our AI solver handles your tasks across **Sparx Reader & Science**.\n" +
@@ -251,8 +251,8 @@ client.on('interactionCreate', async (interaction) => {
         )
         .addActionRowComponents(
           new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('join_queue_btn').setLabel('▶ Join Queue').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('saved_account_btn').setLabel('▶ Saved Login').setStyle(ButtonStyle.Primary)
+            new ButtonBuilder().setCustomId('join_queue_btn').setLabel('Join Queue').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('saved_account_btn').setLabel('Saved Login').setStyle(ButtonStyle.Primary)
           ),
           new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('help_btn').setLabel('Help & FAQ').setEmoji('❓').setStyle(ButtonStyle.Secondary),
