@@ -508,7 +508,7 @@ const sysPrompt = "You are an expert UK GCSE & KS3 Maths solver for Sparx Maths.
           });
           return nextOpen ? (nextOpen.innerText || "").trim() : null;
         }).catch(() => null);
-        const qCode = liveTab || (taskNum + String.fromCharCode(65 + q));
+        const qCode = liveTab || (taskNum + String.fromCharCode(65 + (sameQCount || 0)));
         if (liveTab && /^\d+/.test(liveTab)) {
           taskNum = Number(liveTab.match(/^(\d+)/).at(1));
         }
