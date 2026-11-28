@@ -341,7 +341,7 @@ const list = getSavedList(interaction.user.id);
 list.splice(idx, 1);
 savedAccounts.set(interaction.user.id, list);
 saveState();
-return await interaction.update(buildSavedAccountsMenu(interaction.user.id));
+return await interaction.update({ ...buildSavedAccountsMenu(interaction.user.id), embeds: [] });
 }
 if (interaction.customId === 'help_btn') {
 const helpEmbed = new EmbedBuilder()
@@ -388,16 +388,35 @@ return;
 }
 if (interaction.isStringSelectMenu()) {
 if (interaction.customId === 'manage_saved_account_menu') {
-        const idx = Number(interaction.values.at(0));
-        const list = getSavedList(interaction.user.id);
-        const acc = list[idx];
-        if (!acc) return await interaction.reply({ content: 'Saved account not found.', flags: 64 });
-        await interaction.deferUpdate();
-        return await performSparxLogin(interaction, acc);
-      }
-const session = userSessions.get(interaction.user.id);
-if (!session) return await interaction.reply({ content: 'Session expired. Log in again!', flags: 64 });
-if (interaction.customId === 'select_homework_menu') {
+      const idx = Number(interaction.values[0]);
+      const list = getSavedList(interaction.user.id);
+      const acc = list[idx];
+      if (!acc) return await interaction.update({ ...buildSavedAccountsMenu(interaction.user.id), embeds: [] });
+
+      const baseMenu = buildSavedAccountsMenu(interaction.user.id, idx);
+      const container = baseMenu.components[0];
+      container
+        .addSeparatorComponents(new SeparatorBuilder())
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(
+            `**Selected:** ${acc.isMicrosoft ? 'Microsoft' : 'Sparx'} — **${acc.username}** (${acc.school})`
+          )
+        )
+        .addActionRowComponents(
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('quick_login_saved_' + idx).setLabel('▶ Sign In').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('delete_saved_' + idx).setLabel('🗑 Delete').setStyle(ButtonStyle.Danger)
+          )
+        );
+
+      return await interaction.update({
+        flags: MessageFlags.IsComponentsV2,
+        embeds: [],
+        components: [container]
+      });
+    }
+
+    if (interaction.customId === 'select_homework_menu') {
 const val = interaction.values.at(0);
 session.selectedHwId = val === 'none_completed' ? null : val;
 return await interaction.update(buildSparxDashboard(session));
